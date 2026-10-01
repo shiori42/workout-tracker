@@ -129,8 +129,16 @@ export function Field({
 export const inputClass =
   "h-11 w-full rounded-xl border border-line bg-card2 px-3 text-white outline-none placeholder:text-muted/60 focus:border-accent";
 
+/** 呼び出し側で幅・高さを指定した場合は既定の h-11 / w-full を外す（CSS の優先順で上書きできないため） */
+const inputClassFor = (className?: string) => {
+  let base = inputClass;
+  if (className && /(^|\s)w-/.test(className)) base = base.replace("w-full ", "");
+  if (className && /(^|\s)h-/.test(className)) base = base.replace("h-11 ", "");
+  return cx(base, className);
+};
+
 export function Input(p: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...p} className={cx(inputClass, p.className)} />;
+  return <input {...p} className={inputClassFor(p.className)} />;
 }
 
 export function NumberInput({
@@ -168,7 +176,7 @@ export function NumberInput({
         const v = e.target.value === "" ? 0 : Number(e.target.value);
         if (!Number.isNaN(v)) onChange(Math.max(min, v));
       }}
-      className={cx(inputClass, className)}
+      className={inputClassFor(className)}
       {...rest}
     />
   );
@@ -189,7 +197,7 @@ export function Select<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={cx(inputClass, "appearance-none pr-8", className)}
+      className={inputClassFor(cx("appearance-none pr-8", className))}
       style={{
         backgroundImage:
           "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9aab' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",

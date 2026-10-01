@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { cloudEnabled } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
 import { calcBmi, bmiLabel } from "@/lib/calc";
 import { GOAL_PRESETS, SAMPLE_TEMPLATES } from "@/lib/constants";
@@ -74,6 +76,11 @@ export default function OnboardingPage() {
                 </li>
               ))}
             </ul>
+            {cloudEnabled && (
+              <Link href="/login" className="mt-5 text-sm font-bold text-accent underline underline-offset-4">
+                アカウントをお持ちの方：ログインしてデータを復元
+              </Link>
+            )}
           </div>
         )}
 

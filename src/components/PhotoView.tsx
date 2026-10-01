@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { loadPhoto } from "@/lib/photos";
 import { cx } from "./ui";
 
-/** IndexedDB に保存した画像を表示する（端末内のみで保持し外部公開しない） */
+/** 端末内（IndexedDB）またはログイン中は本人専用ストレージの画像を表示する */
 export function PhotoView({
   photoKey,
   alt,

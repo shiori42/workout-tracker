@@ -35,6 +35,7 @@ import {
 } from "@/components/ui";
 import { CameraIcon, ChevronLeft, ChevronRight, PlusIcon, TrashIcon } from "@/components/Icons";
 import { PhotoView } from "@/components/PhotoView";
+import { FoodPicker } from "@/components/FoodPicker";
 
 export default function MealsPage() {
   return (
@@ -51,7 +52,12 @@ function MealsInner() {
   const data = useApp();
   const today = ymd();
   const [date, setDate] = useState(params.get("date") || today);
-  const [draft, setDraft] = useState<MealDraft | null>(null);
+  const [draft, setDraftState] = useState<MealDraft | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const setDraft = (d: MealDraft | null) => {
+    if (!d) setPickerOpen(false);
+    setDraftState(d);
+  };
   const [extraOpen, setExtraOpen] = useState(false);
   const [extra, setExtra] = useState({ label: "ウォーキング", kcal: 100 });
 
@@ -59,6 +65,16 @@ function MealsInner() {
   const intake = dayIntake(data, date);
   const burn = dayBurn(data, date);
   const extras = data.extraBurns.filter((x) => x.date === date);
+  const pfc = meals.reduce(
+    (a, m) => ({
+      p: a.p + (m.proteinG ?? 0),
+      f: a.f + (m.fatG ?? 0),
+      c: a.c + (m.carbG ?? 0),
+      kcal: a.kcal + (m.proteinG ?? 0) * 4 + (m.fatG ?? 0) * 9 + (m.carbG ?? 0) * 4,
+      has: a.has || m.proteinG !== undefined || m.fatG !== undefined || m.carbG !== undefined,
+    }),
+    { p: 0, f: 0, c: 0, kcal: 0, has: false },
+  );
 
   const newDraft = (mealType: MealType): MealDraft => ({
     date,
@@ -131,6 +147,26 @@ function MealsInner() {
               <div className="text-[10px] text-muted">摂取−消費</div>
             </div>
           </div>
+          {pfc.has && (
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line/60 pt-3 text-center">
+              {(
+                [
+                  ["たんぱく質", pfc.p, 4, "text-ok"],
+                  ["脂質", pfc.f, 9, "text-yellow-300"],
+                  ["炭水化物", pfc.c, 4, "text-sky-300"],
+                ] as const
+              ).map(([label, g, k, color]) => (
+                <div key={label}>
+                  <div className="text-[10px] text-muted">{label}</div>
+                  <div className={`text-base font-extrabold tabular-nums ${color}`}>
+                    {Math.round(g * 10) / 10}
+                    <span className="text-[10px] text-muted">g</span>
+                  </div>
+                  <div className="text-[10px] text-muted">{pfc.kcal > 0 ? Math.round(((g * k) / pfc.kcal) * 100) : 0}%</div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {(Object.keys(MEAL_TYPES) as MealType[]).map((type) => {
@@ -173,6 +209,7 @@ function MealsInner() {
                           <span className="block truncate text-sm font-bold">{m.foodName}</span>
                           <span className="block truncate text-[11px] text-muted">
                             {m.amount}
+                            {m.proteinG !== undefined && ` ・ P${m.proteinG}g`}
                             {m.note && ` ・ ${m.note}`}
                           </span>
                         </span>
@@ -253,6 +290,27 @@ function MealsInner() {
               onChange={(v) => setDraft({ ...draft, mealType: v })}
               options={(Object.keys(MEAL_TYPES) as MealType[]).map((k) => ({ value: k, label: MEAL_TYPES[k] }))}
             />
+            {pickerOpen ? (
+              <FoodPicker
+                onClose={() => setPickerOpen(false)}
+                onPick={(f) => {
+                  setDraft({
+                    ...draft,
+                    foodName: f.brand ? `${f.name}（${f.brand}）` : f.name,
+                    amount: f.amount,
+                    kcal: f.kcal,
+                    proteinG: f.proteinG,
+                    fatG: f.fatG,
+                    carbG: f.carbG,
+                  });
+                  setPickerOpen(false);
+                }}
+              />
+            ) : (
+              <Button variant="secondary" className="w-full" onClick={() => setPickerOpen(true)}>
+                🔍 食品を検索 / バーコードで入力
+              </Button>
+            )}
             <Field label="料理・食品名">
               <Input value={draft.foodName} onChange={(e) => setDraft({ ...draft, foodName: e.target.value })} placeholder="例：鶏むね肉のサラダ" />
             </Field>
@@ -263,6 +321,24 @@ function MealsInner() {
               <Field label="カロリー(kcal)">
                 <NumberInput value={draft.kcal} onChange={(v) => setDraft({ ...draft, kcal: Math.round(v) })} />
               </Field>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["proteinG", "たんぱく質(g)"],
+                  ["fatG", "脂質(g)"],
+                  ["carbG", "炭水化物(g)"],
+                ] as const
+              ).map(([k, label]) => (
+                <Field key={k} label={label}>
+                  <NumberInput
+                    value={draft[k] ?? ""}
+                    placeholder="任意"
+                    step={0.1}
+                    onChange={(v) => setDraft({ ...draft, [k]: v > 0 ? Math.round(v * 10) / 10 : undefined })}
+                  />
+                </Field>
+              ))}
             </div>
             <Field label="写真（任意）">
               <MealPhotoInput draft={draft} setDraft={setDraft} />

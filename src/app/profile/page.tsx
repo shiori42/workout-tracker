@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useApp } from "@/lib/store";
 import type { BodyPhoto, BodyRecord, PhotoKind } from "@/lib/types";
@@ -123,6 +123,13 @@ export default function ProfilePage() {
             <Big label="体重" value={latest?.weightKg ?? "-"} unit="kg" />
             <Big label="BMI" value={bmi || "-"} sub={bmiLabel(bmi)} />
           </div>
+          {latest && (latest.bodyFatPct || latest.muscleKg || latest.waistCm) && (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <Big label="体脂肪率" value={latest.bodyFatPct ?? "-"} unit="%" />
+              <Big label="筋肉量" value={latest.muscleKg ?? "-"} unit="kg" />
+              <Big label="ウエスト" value={latest.waistCm ?? "-"} unit="cm" />
+            </div>
+          )}
           {latest && <p className="mt-2 text-[11px] text-muted">最終更新：{fmtDateLong(latest.date)}</p>}
           {!thisMonthRecord && (
             <p className="mt-2 rounded-xl bg-accent/10 px-3 py-2 text-xs text-accent">
@@ -171,7 +178,9 @@ export default function ProfilePage() {
                       <span className="flex-1">
                         <span className="block text-sm font-bold">{fmtMonth(monthOf(r.date))}</span>
                         <span className="block text-[11px] text-muted">
-                          {fmtDate(r.date)} ・ {r.heightCm}cm ・ 写真{r.photos.length}枚
+                          {fmtDate(r.date)} ・ {r.heightCm}cm
+                          {r.bodyFatPct ? ` ・ 体脂肪${r.bodyFatPct}%` : ""}
+                          {r.waistCm ? ` ・ W${r.waistCm}` : ""} ・ 写真{r.photos.length}枚
                         </span>
                       </span>
                       <span className="text-right">
@@ -233,6 +242,7 @@ function PhotoCompare({ records, onView }: { records: BodyRecord[]; onView: (k: 
   const withPhoto = records.filter((r) => r.photos.some((p) => p.kind === kind));
   const latest = withPhoto[withPhoto.length - 1];
   const [base, setBase] = useState<string>("start");
+  const [mode, setMode] = useState<"side" | "slider" | "timelapse">("side");
 
   if (records.every((r) => r.photos.length === 0)) {
     return (
@@ -269,9 +279,35 @@ function PhotoCompare({ records, onView }: { records: BodyRecord[]; onView: (k: 
         options={(Object.keys(PHOTO_KINDS) as PhotoKind[]).map((k) => ({ value: k, label: PHOTO_KINDS[k] }))}
         className="mb-3"
       />
-      <div className="mb-3">
-        <Select value={base} onChange={setBase} options={options} />
-      </div>
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: "side", label: "並べる" },
+          { value: "slider", label: "スライダー" },
+          { value: "timelapse", label: "タイムラプス" },
+        ]}
+        className="mb-3"
+      />
+      {mode !== "timelapse" && (
+        <div className="mb-3">
+          <Select value={base} onChange={setBase} options={options} />
+        </div>
+      )}
+      {mode === "timelapse" ? (
+        <Timelapse records={withPhoto} kind={kind} />
+      ) : mode === "slider" ? (
+        photoOf(left) && photoOf(latest) ? (
+          <CompareSlider
+            before={photoOf(left)!.key}
+            after={photoOf(latest)!.key}
+            beforeLabel={left ? fmtMonth(monthOf(left.date)) : ""}
+            afterLabel={latest ? fmtMonth(monthOf(latest.date)) : ""}
+          />
+        ) : (
+          <Empty>比較できる写真がありません</Empty>
+        )
+      ) : (
       <div className="grid grid-cols-2 gap-2">
         {[left, latest].map((r, i) => {
           const p = photoOf(r);
@@ -296,15 +332,97 @@ function PhotoCompare({ records, onView }: { records: BodyRecord[]; onView: (k: 
           );
         })}
       </div>
-      {left && latest && left.id !== latest.id && (
+      )}
+      {mode !== "timelapse" && left && latest && left.id !== latest.id && (
         <p className="mt-2 text-center text-xs text-muted">
           体重 {left.weightKg}kg → {latest.weightKg}kg（
           {latest.weightKg - left.weightKg > 0 ? "+" : ""}
           {Math.round((latest.weightKg - left.weightKg) * 10) / 10}kg）
         </p>
       )}
-      <p className="mt-2 text-[10px] text-muted">🔒 写真はこの端末内にのみ保存され、外部には送信されません。</p>
+      <p className="mt-2 text-[10px] text-muted">
+        🔒 写真はこの端末内（ログイン中は本人だけがアクセスできるクラウド領域）に保存され、AIなど外部サービスには送信されません。
+      </p>
     </Card>
+  );
+}
+
+function CompareSlider({ before, after, beforeLabel, afterLabel }: { before: string; after: string; beforeLabel: string; afterLabel: string }) {
+  const [pos, setPos] = useState(50);
+  return (
+    <div>
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-card2">
+        <PhotoView photoKey={after} alt="" className="absolute inset-0 h-full w-full" />
+        <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+          <PhotoView photoKey={before} alt="" className="h-full w-full" />
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow" style={{ left: `${pos}%` }} />
+        <span className="absolute top-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold">{beforeLabel}</span>
+        <span className="absolute top-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold">{afterLabel}</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(Number(e.target.value))}
+          aria-label="比較スライダー"
+          className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+        />
+      </div>
+      <p className="mt-1 text-center text-[10px] text-muted">左右にドラッグして比較</p>
+    </div>
+  );
+}
+
+function Timelapse({ records, kind }: { records: BodyRecord[]; kind: PhotoKind }) {
+  const frames = records.map((r) => ({ r, key: r.photos.find((p) => p.kind === kind)!.key }));
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const cur = frames[Math.min(idx, frames.length - 1)];
+
+  useEffect(() => {
+    if (!playing || frames.length < 2) return;
+    const id = setInterval(() => setIdx((i) => (i + 1) % frames.length), 900);
+    return () => clearInterval(id);
+  }, [playing, frames.length]);
+
+  if (!cur) return <Empty>この角度の写真がありません</Empty>;
+  return (
+    <div>
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-card2">
+        {frames.map((f, i) => (
+          <PhotoView
+            key={f.key}
+            photoKey={f.key}
+            alt=""
+            className={cx("absolute inset-0 h-full w-full transition-opacity duration-300", i === idx ? "opacity-100" : "opacity-0")}
+          />
+        ))}
+        <span className="absolute top-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-xs font-bold">
+          {fmtMonth(monthOf(cur.r.date))} ・ {cur.r.weightKg}kg
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <Button size="sm" variant="secondary" disabled={frames.length < 2} onClick={() => setPlaying((p) => !p)}>
+          {playing ? "⏸ 停止" : "▶ 再生"}
+        </Button>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, frames.length - 1)}
+          value={idx}
+          onChange={(e) => {
+            setPlaying(false);
+            setIdx(Number(e.target.value));
+          }}
+          aria-label="表示する月"
+          className="flex-1 accent-[var(--color-accent)]"
+        />
+        <span className="w-10 text-right text-[11px] text-muted tabular-nums">
+          {idx + 1}/{frames.length}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -341,7 +459,17 @@ function BodyForm({ draft: initial, onClose }: { draft: BodyDraft; onClose: () =
         }
         photos.push({ kind, key: await savePhoto(v.file, "body") });
       }
-      data.upsertBodyRecord({ id: d.id, date: d.date, heightCm: d.heightCm, weightKg: d.weightKg, photos, note: d.note });
+      data.upsertBodyRecord({
+        id: d.id,
+        date: d.date,
+        heightCm: d.heightCm,
+        weightKg: d.weightKg,
+        bodyFatPct: d.bodyFatPct || undefined,
+        muscleKg: d.muscleKg || undefined,
+        waistCm: d.waistCm || undefined,
+        photos,
+        note: d.note,
+      });
       toast("身体記録を保存しました", `BMI ${bmi}`, "📏");
       onClose();
     } finally {
@@ -379,6 +507,24 @@ function BodyForm({ draft: initial, onClose }: { draft: BodyDraft; onClose: () =
           <Field label="体重(kg)">
             <NumberInput value={d.weightKg} step={0.1} onChange={(v) => setD({ ...d, weightKg: v })} />
           </Field>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["bodyFatPct", "体脂肪率(%)"],
+              ["muscleKg", "筋肉量(kg)"],
+              ["waistCm", "ウエスト(cm)"],
+            ] as const
+          ).map(([k, label]) => (
+            <Field key={k} label={label}>
+              <NumberInput
+                value={d[k] ?? ""}
+                placeholder="任意"
+                step={0.1}
+                onChange={(v) => setD({ ...d, [k]: v > 0 ? Math.round(v * 10) / 10 : undefined })}
+              />
+            </Field>
+          ))}
         </div>
         <div className="flex items-center justify-between rounded-xl bg-card2 px-4 py-3">
           <span className="text-xs font-bold text-muted">BMI（自動算出）</span>

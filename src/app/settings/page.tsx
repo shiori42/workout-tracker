@@ -11,7 +11,9 @@ import {
   showSystemNotification,
 } from "@/lib/notify";
 import { toast } from "@/lib/toast";
+import { bodyCsv, downloadText, mealCsv, workoutCsv } from "@/lib/csv";
 import { Button, Card, Input, NumberInput, PageHeader, Sheet, Toggle, cx } from "@/components/ui";
+import { AccountCard, PushSection } from "@/components/SettingsCloud";
 
 export default function SettingsPage() {
   const data = useApp();
@@ -45,6 +47,8 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="設定" back />
       <div className="space-y-3 px-4 pt-3 pb-4">
+        <AccountCard />
+
         <Card title="プロフィール">
           <Row label="ニックネーム">
             <Input
@@ -64,7 +68,7 @@ export default function SettingsPage() {
                 key={g}
                 onClick={() => data.updateSettings({ monthlyGoal: g })}
                 className={cx(
-                  "h-10 flex-1 rounded-xl text-sm font-bold",
+                  "h-10 flex-1 rounded-xl text-sm font-bold whitespace-nowrap",
                   s.monthlyGoal === g ? "bg-accent" : "bg-card2 text-muted",
                 )}
               >
@@ -75,7 +79,7 @@ export default function SettingsPage() {
               value={s.monthlyGoal}
               min={1}
               onChange={(v) => data.updateSettings({ monthlyGoal: Math.max(1, Math.min(31, Math.round(v))) })}
-              className="h-10 w-16 text-center"
+              className="h-10 w-16 shrink-0 text-center"
               aria-label="目標回数"
             />
           </div>
@@ -87,6 +91,7 @@ export default function SettingsPage() {
         </Card>
 
         <Card title="通知">
+          <PushSection />
           <div className="mb-3 flex items-center justify-between rounded-xl bg-card2 px-3 py-2.5">
             <div className="text-xs">
               <div className="font-bold">ブラウザ通知</div>
@@ -164,7 +169,7 @@ export default function SettingsPage() {
             />
           </div>
           <p className="mt-2 text-[10px] leading-relaxed text-muted">
-            ※ 通知はブラウザ / OSの権限に依存します。iPhoneではホーム画面に追加（PWA）して利用してください。アプリを閉じている間の予定通知にはWeb Pushサーバーの設定が必要です。
+            ※ 通知はブラウザ / OSの権限に依存します。iPhoneではホーム画面に追加（PWA）してから通知を有効にしてください。プッシュ通知がオフの場合は、アプリを開いている間のみ通知します。
           </p>
         </Card>
 
@@ -179,6 +184,17 @@ export default function SettingsPage() {
             <Button variant="secondary" className="w-full" onClick={doExport}>
               バックアップを書き出す（JSON）
             </Button>
+            <div className="grid grid-cols-3 gap-2">
+              <Button size="sm" variant="secondary" onClick={() => downloadText(workoutCsv(data), `kintore-workouts-${ymd()}.csv`)}>
+                筋トレCSV
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => downloadText(mealCsv(data), `kintore-meals-${ymd()}.csv`)}>
+                食事CSV
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => downloadText(bodyCsv(data), `kintore-body-${ymd()}.csv`)}>
+                身体CSV
+              </Button>
+            </div>
             <Button variant="secondary" className="w-full" onClick={() => fileRef.current?.click()}>
               バックアップから復元
             </Button>
@@ -210,12 +226,6 @@ export default function SettingsPage() {
           <p className="mt-2 text-[10px] text-muted">※ 写真はバックアップファイルに含まれません。</p>
         </Card>
 
-        <Card title="アカウント">
-          <p className="text-xs leading-relaxed text-muted">
-            現在はログイン不要で、すべてのデータをこの端末内（ブラウザ）に保存しています。クラウド保存・複数端末での同期はアカウント機能の導入後に利用できます。
-          </p>
-        </Card>
-
         <p className="text-center text-[10px] text-muted">筋トレ管理アプリ v1.2</p>
       </div>
 
@@ -241,7 +251,9 @@ export default function SettingsPage() {
           </div>
         }
       >
-        <p className="text-sm text-muted">トレーニング・食事・身体記録・写真・設定がすべて削除され、初期設定からやり直しになります。この操作は取り消せません。</p>
+        <p className="text-sm text-muted">
+          トレーニング・食事・身体記録・写真・設定がすべて削除され、初期設定からやり直しになります。ログイン中はクラウド上のデータも削除されます。この操作は取り消せません。
+        </p>
       </Sheet>
     </div>
   );

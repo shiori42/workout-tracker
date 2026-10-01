@@ -1,8 +1,11 @@
 /* 筋トレ管理アプリ Service Worker */
 const CACHE = "kintore-shell-v1";
+/* 開発時（?dev=1）はキャッシュせず、通知処理のみ行う */
+const DEV = new URL(self.location.href).searchParams.has("dev");
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
+  if (DEV) return;
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(["/", "/timer", "/analysis", "/profile"]).catch(() => {})),
   );
@@ -20,7 +23,9 @@ self.addEventListener("activate", (event) => {
 /* ページ遷移はネットワーク優先、オフライン時はキャッシュへフォールバック */
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  if (DEV) return;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  if (new URL(req.url).pathname.startsWith("/api/")) return;
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
@@ -60,6 +65,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "筋トレ管理", {
       body: data.body || "",
+      tag: data.tag || undefined,
+      renotify: !!data.tag,
       icon: "/icons/192",
       badge: "/icons/192",
       vibrate: [200, 100, 200],
@@ -74,7 +81,10 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if ("focus" in c) return c.focus();
+        if ("focus" in c) {
+          if ("navigate" in c && url !== "/") c.navigate(url).catch(() => {});
+          return c.focus();
+        }
       }
       return self.clients.openWindow(url);
     }),

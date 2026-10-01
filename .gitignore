@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# push subscription store (used when Supabase is not configured)
+/.data/
+
+!.env.example

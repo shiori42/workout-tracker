@@ -100,6 +100,9 @@ export interface MealRecord {
   foodName: string;
   amount: string;
   kcal: number;
+  proteinG?: number;
+  fatG?: number;
+  carbG?: number;
   photoKey?: string;
   note: string;
   createdAt: number;
@@ -122,6 +125,9 @@ export interface BodyRecord {
   date: string;
   heightCm: number;
   weightKg: number;
+  bodyFatPct?: number;
+  muscleKg?: number;
+  waistCm?: number;
   photos: BodyPhoto[];
   note: string;
 }
@@ -155,4 +161,5 @@ export interface AIReport {
   highlights: string[];
   cautions: string[];
   suggestions: string[];
+  source?: "ai" | "template";
 }

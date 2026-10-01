@@ -15,7 +15,7 @@ import { useApp, type ExerciseInput } from "@/lib/store";
 import type { BodyPart, Equipment, Exercise, Intensity, Template, WeightMode } from "@/lib/types";
 import { BODY_PARTS, EQUIPMENT, INTENSITY, TIMER_PRESETS, WEIGHT_MODES } from "@/lib/constants";
 import { fmtDate, WEEKDAYS } from "@/lib/date";
-import { setVolume } from "@/lib/calc";
+import { estimate1RM, personalRecord, setVolume } from "@/lib/calc";
 import { toast } from "@/lib/toast";
 import {
   Badge,
@@ -364,6 +364,7 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
             date: s.date,
             label: fmtDate(s.date),
             maxWeight: Math.max(...done.map((x) => x.weight)),
+            e1rm: Math.max(...done.map((x) => estimate1RM(x.weight, x.reps))),
             reps: done.reduce((a, x) => a + x.reps, 0),
             sets: done.length,
             volume: Math.round(done.reduce((a, x) => a + setVolume(e, x), 0)),
@@ -373,6 +374,7 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
         }),
     );
   const hasWeight = rows.some((r) => r.maxWeight > 0);
+  const pr = id ? personalRecord(data.sessions, id) : null;
 
   return (
     <Sheet open={!!id} onClose={onClose} title={`${ex?.name ?? ""} の履歴`}>
@@ -380,6 +382,23 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
         <Empty>まだ記録がありません。</Empty>
       ) : (
         <>
+          {pr && (
+            <div className="mb-3 grid grid-cols-3 gap-2">
+              {hasWeight ? (
+                <>
+                  <PrStat label="推定1RM" value={pr.best1RM} unit="kg" sub={pr.best1RMDate && fmtDate(pr.best1RMDate)} />
+                  <PrStat label="最大重量" value={pr.bestWeight} unit="kg" />
+                  <PrStat label="最大ボリューム" value={pr.bestVolume} unit="kg" />
+                </>
+              ) : (
+                <>
+                  <PrStat label="最高回数" value={pr.bestReps} unit="回" />
+                  <PrStat label="記録回数" value={rows.length} unit="回" />
+                  <PrStat label="累計回数" value={rows.reduce((a, r) => a + r.reps, 0)} unit="回" />
+                </>
+              )}
+            </div>
+          )}
           <div className="h-48 rounded-xl bg-card2 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={rows} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
@@ -388,7 +407,10 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
                 <YAxis tick={{ fill: "#9a9aab", fontSize: 10 }} />
                 <Tooltip contentStyle={{ background: "#16161d", border: "1px solid #2c2c39", borderRadius: 12, fontSize: 12 }} />
                 {hasWeight ? (
-                  <Line type="monotone" dataKey="maxWeight" name="最大重量(kg)" stroke="#ff6b2c" strokeWidth={2} dot />
+                  <>
+                    <Line type="monotone" dataKey="maxWeight" name="最大重量(kg)" stroke="#ff6b2c" strokeWidth={2} dot />
+                    <Line type="monotone" dataKey="e1rm" name="推定1RM(kg)" stroke="#fbbf24" strokeWidth={2} strokeDasharray="4 3" dot={false} />
+                  </>
                 ) : (
                   <Line type="monotone" dataKey="reps" name="総回数" stroke="#ff6b2c" strokeWidth={2} dot />
                 )}
@@ -413,6 +435,19 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
         </>
       )}
     </Sheet>
+  );
+}
+
+function PrStat({ label, value, unit, sub }: { label: string; value: number; unit: string; sub?: string }) {
+  return (
+    <div className="rounded-xl bg-card2 p-2.5 text-center">
+      <div className="text-[10px] font-bold text-muted">🏅 {label}</div>
+      <div className="text-lg font-extrabold tabular-nums">
+        {value || "-"}
+        <span className="text-[10px] text-muted">{unit}</span>
+      </div>
+      {sub && <div className="text-[9px] text-muted">{sub}</div>}
+    </div>
   );
 }
 

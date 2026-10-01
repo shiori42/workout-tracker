@@ -7,6 +7,7 @@ import { beep, showSystemNotification, vibrate } from "@/lib/notify";
 import { toast } from "@/lib/toast";
 import { planFor } from "@/lib/calc";
 import { monthOf, pad, ymd } from "@/lib/date";
+import { swUrl, usePush } from "@/lib/push";
 
 /** タイマー終了を全画面共通で監視する（TM-04 / TM-05 / TI-07） */
 export function TimerWatcher() {
@@ -58,6 +59,7 @@ export function NotificationWatcher() {
       const data = useApp.getState();
       const { notif } = data.settings;
       if (!data.settings.onboarded) return;
+      if (usePush.getState().enabled) return;
       const today = ymd();
       const hm = nowHm();
       const log = data.notifLog;
@@ -109,10 +111,7 @@ export function NotificationWatcher() {
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
-    if (process.env.NODE_ENV !== "production") return;
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .catch(() => {});
+    navigator.serviceWorker.register(swUrl(), { scope: "/", updateViaCache: "none" }).catch(() => {});
   }, []);
   return null;
 }

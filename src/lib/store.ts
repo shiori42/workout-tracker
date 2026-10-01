@@ -58,6 +58,8 @@ export interface AppData {
   bodyRecords: BodyRecord[];
   stamps: Stamp[];
   reports: Record<string, AIReport>;
+  /** バッジID → 初回達成時刻 */
+  achievedAt: Record<string, number>;
   notifLog: Record<string, string>;
 }
 
@@ -121,6 +123,7 @@ interface AppActions {
   deleteBodyRecord: (id: string) => void;
 
   saveReport: (report: AIReport) => void;
+  recordAchievements: (ids: string[]) => void;
   markNotified: (key: string, value: string) => void;
 
   loadSamples: () => void;
@@ -143,6 +146,7 @@ const initialData = (): AppData => ({
   bodyRecords: [],
   stamps: [],
   reports: {},
+  achievedAt: {},
   notifLog: {},
 });
 
@@ -457,6 +461,13 @@ export const useApp = create<AppState>()(
 
         saveReport: (report) =>
           set((st) => ({ reports: { ...st.reports, [report.month]: report } })),
+        recordAchievements: (ids) => {
+          const cur = get().achievedAt;
+          const fresh = ids.filter((id) => !cur[id]);
+          if (fresh.length === 0) return;
+          const now = Date.now();
+          set({ achievedAt: { ...cur, ...Object.fromEntries(fresh.map((id) => [id, now])) } });
+        },
         markNotified: (key, value) =>
           set((st) => ({ notifLog: { ...st.notifLog, [key]: value } })),
 

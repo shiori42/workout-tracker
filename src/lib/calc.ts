@@ -519,4 +519,161 @@ export function generateReport(data: AppData, month: string, today = ymd()): AIR
   };
 }
 
+/* ---------------- 自己ベスト・次回目標 ---------------- */
+
+/** Epley 式による推定 1RM */
+export const estimate1RM = (weight: number, reps: number) => {
+  if (weight <= 0 || reps <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30) * 10) / 10;
+};
+
+export interface PersonalRecord {
+  best1RM: number;
+  bestWeight: number;
+  bestReps: number;
+  bestVolume: number;
+  best1RMDate?: string;
+}
+
+export function personalRecord(sessions: WorkoutSession[], exerciseId: string, excludeSessionId?: string): PersonalRecord {
+  const pr: PersonalRecord = { best1RM: 0, bestWeight: 0, bestReps: 0, bestVolume: 0 };
+  for (const s of sessions) {
+    if (!s.completed || s.id === excludeSessionId) continue;
+    for (const e of s.exercises) {
+      if (e.exerciseId !== exerciseId) continue;
+      let vol = 0;
+      for (const x of e.sets) {
+        if (!x.done) continue;
+        const rm = estimate1RM(x.weight, x.reps);
+        if (rm > pr.best1RM) {
+          pr.best1RM = rm;
+          pr.best1RMDate = s.date;
+        }
+        pr.bestWeight = Math.max(pr.bestWeight, x.weight);
+        pr.bestReps = Math.max(pr.bestReps, x.reps);
+        vol += setVolume(e, x);
+      }
+      pr.bestVolume = Math.max(pr.bestVolume, Math.round(vol));
+    }
+  }
+  return pr;
+}
+
+/** 前回の結果から次回の目標を提案する（ルールベース） */
+export function nextTarget(sessions: WorkoutSession[], ex: Pick<SessionExercise, "exerciseId" | "equipment">, excludeSessionId?: string) {
+  const last = sessions
+    .filter((s) => s.completed && s.id !== excludeSessionId && s.exercises.some((e) => e.exerciseId === ex.exerciseId && e.sets.some((x) => x.done)))
+    .sort((a, b) => b.startAt - a.startAt)[0];
+  if (!last) return null;
+  const e = last.exercises.find((x) => x.exerciseId === ex.exerciseId)!;
+  const done = e.sets.filter((x) => x.done);
+  const allDone = done.length === e.sets.length;
+  const maxW = Math.max(...done.map((x) => x.weight));
+  const minReps = Math.min(...done.map((x) => x.reps));
+  const prev = maxW > 0 ? `${maxW}kg×${minReps}回×${done.length}セット` : `${minReps}回×${done.length}セット`;
+  if (!allDone) return { prev, text: "同じ条件で全セット完遂を目指しましょう", weight: maxW || undefined, reps: minReps };
+  if (maxW > 0) {
+    const inc = ex.equipment === "barbell" ? 2.5 : 1;
+    if (minReps >= 12) return { prev, text: `${maxW + inc}kg に上げて ${Math.max(8, minReps - 4)}回を目標に`, weight: maxW + inc, reps: Math.max(8, minReps - 4) };
+    return { prev, text: `${maxW}kg×${minReps + 1}回 か ${maxW + inc}kg×${minReps}回 に挑戦`, weight: maxW, reps: minReps + 1 };
+  }
+  if (minReps >= 20) return { prev, text: "1セット追加、またはゆっくり動作で負荷アップ", reps: minReps };
+  return { prev, text: `各セット ${minReps + 2}回を目標に`, reps: minReps + 2 };
+}
+
+/* ---------------- AIレポート用の最小データ（写真・メモ・氏名は含めない） ---------------- */
+
+export interface ReportMonthSummary {
+  trainingDays: number;
+  sessions: number;
+  totalSets: number;
+  totalReps: number;
+  volumeKg: number;
+  kcal: number;
+  goal: number;
+  goalRatePct: number;
+  exerciseKinds: number;
+  plannedDays: number;
+  plannedDone: number;
+  partSets: Record<string, number>;
+  weightKg?: number;
+  bmi?: number;
+  avgIntakeKcal?: number;
+}
+
+export interface ReportInput {
+  month: string;
+  current: ReportMonthSummary;
+  previous: ReportMonthSummary;
+  streakDays: number;
+  bestStreakDays: number;
+  fatigueTop: { muscle: string; score: number }[];
+  progress: { exercise: string; previousBest: number; currentBest: number; unit: "kg" | "回" }[];
+}
+
+function summarize(data: AppData, month: string, today: string): ReportMonthSummary {
+  const s = monthStats(data, month, today);
+  const intakeDays = new Set(data.meals.filter((m) => monthOf(m.date) === month).map((m) => m.date)).size;
+  return {
+    trainingDays: s.trainingDays,
+    sessions: s.sessions,
+    totalSets: s.totalSets,
+    totalReps: s.totalReps,
+    volumeKg: s.volume,
+    kcal: Math.round(s.kcal),
+    goal: s.goal,
+    goalRatePct: Math.round(s.goalRate * 100),
+    exerciseKinds: s.exerciseKinds,
+    plannedDays: s.plannedDays,
+    plannedDone: s.plannedDone,
+    partSets: Object.fromEntries(
+      (Object.entries(s.partSets) as [BodyPart, number][]).filter(([, n]) => n > 0).map(([k, n]) => [BODY_PARTS[k], n]),
+    ),
+    weightKg: s.weight,
+    bmi: s.bmi,
+    avgIntakeKcal: intakeDays > 0 ? Math.round(s.intake / intakeDays) : undefined,
+  };
+}
+
+export function buildReportInput(data: AppData, month: string, today = ymd()): ReportInput {
+  const prevMonth = addMonths(month, -1);
+  const best = (m: string) => {
+    const map = new Map<string, { v: number; unit: "kg" | "回" }>();
+    for (const s of data.sessions) {
+      if (!s.completed || monthOf(s.date) !== m) continue;
+      for (const e of s.exercises) {
+        for (const x of e.sets) {
+          if (!x.done) continue;
+          const useWeight = x.weight > 0;
+          const v = useWeight ? x.weight : x.reps;
+          const cur = map.get(e.name);
+          if (!cur || v > cur.v) map.set(e.name, { v, unit: useWeight ? "kg" : "回" });
+        }
+      }
+    }
+    return map;
+  };
+  const curBest = best(month);
+  const prevBest = best(prevMonth);
+  const progress = [...curBest.entries()]
+    .filter(([name]) => prevBest.has(name))
+    .map(([name, c]) => ({ exercise: name, previousBest: prevBest.get(name)!.v, currentBest: c.v, unit: c.unit }))
+    .slice(0, 8);
+  const fatigue = computeFatigue(data.sessions);
+  return {
+    month,
+    current: summarize(data, month, today),
+    previous: summarize(data, prevMonth, today),
+    streakDays: currentStreak(data, today),
+    bestStreakDays: bestStreak(data, today),
+    fatigueTop: (Object.entries(fatigue) as [Muscle, MuscleFatigue][])
+      .filter(([, f]) => f.score > 0)
+      .sort((a, b) => b[1].score - a[1].score)
+      .slice(0, 4)
+      .map(([m, f]) => ({ muscle: MUSCLES[m], score: f.score })),
+    progress,
+  };
+}
+
 export { addDays, monthOf, ymd };

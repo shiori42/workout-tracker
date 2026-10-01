@@ -9,6 +9,9 @@ import { useTimer } from "@/lib/timerStore";
 import {
   bodyWeightAt,
   computeBadges,
+  estimate1RM,
+  nextTarget,
+  personalRecord,
   planFor,
   sessionDurationMinutes,
   sessionKcal,
@@ -253,6 +256,16 @@ function SessionView({
     const willDone = !set.done;
     data.updateSet(session.id, ex.uid, i, { done: willDone });
     if (willDone) {
+      const pr = personalRecord(data.sessions, ex.exerciseId, session.id);
+      const doneInSession = ex.sets.filter((x, j) => x.done && j !== i);
+      const sessionBest1RM = Math.max(0, ...doneInSession.map((x) => estimate1RM(x.weight, x.reps)));
+      const sessionBestReps = Math.max(0, ...doneInSession.map((x) => x.reps));
+      const rm = estimate1RM(set.weight, set.reps);
+      if (rm > 0 && pr.best1RM > 0 && rm > pr.best1RM && rm > sessionBest1RM) {
+        toast("自己ベスト更新！", `${ex.name} 推定1RM ${rm}kg（前回まで ${pr.best1RM}kg）`, "🏅");
+      } else if (set.weight === 0 && pr.bestReps > 0 && pr.bestWeight === 0 && set.reps > pr.bestReps && set.reps > sessionBestReps) {
+        toast("自己ベスト更新！", `${ex.name} ${set.reps}回（前回まで ${pr.bestReps}回）`, "🏅");
+      }
       const isLastOfAll =
         totals.sets + 1 >= totals.plannedSets &&
         session.exercises.every((e) => e.sets.every((s, j) => s.done || (e.uid === ex.uid && j === i)));
@@ -405,6 +418,7 @@ function ExerciseCard({
   const doneCount = ex.sets.filter((s) => s.done).length;
   const complete = ex.sets.length > 0 && doneCount === ex.sets.length;
   const first = ex.sets[0];
+  const suggestion = nextTarget(data.sessions, ex, sessionId);
   const weightLabel = ex.weightMode === "per_hand" ? "kg/片手" : ex.weightMode === "left_right" ? "kg/片側" : "kg";
 
   return (
@@ -430,6 +444,11 @@ function ExerciseCard({
             <div className="mt-1.5 text-[11px] text-muted">
               目標：{first.weight > 0 ? `${first.weight}kg × ` : ""}
               {first.reps}回 × {ex.sets.length}セット
+            </div>
+          )}
+          {suggestion && doneCount === 0 && (
+            <div className="mt-1 text-[11px] leading-snug text-accent">
+              💡 前回 {suggestion.prev} → {suggestion.text}
             </div>
           )}
         </div>

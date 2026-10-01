@@ -9,6 +9,8 @@ import { NotificationWatcher, ServiceWorkerRegister, TimerWatcher } from "./Watc
 import { useApp } from "@/lib/store";
 import { useToast } from "@/lib/toast";
 import { useTimer } from "@/lib/timerStore";
+import { CloudSync } from "./CloudSync";
+import { PushBridge } from "./PushBridge";
 
 function Toaster() {
   const toasts = useToast((s) => s.toasts);
@@ -37,14 +39,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const onboarded = useApp((s) => s.settings.onboarded);
-  const isOnboarding = pathname === "/onboarding";
+  const allowedBeforeOnboarding = pathname === "/onboarding" || pathname === "/login";
+  const isOnboarding = pathname === "/onboarding" || (pathname === "/login" && !onboarded);
   const timerVisible = useTimer((s) => s.status !== "idle") && pathname !== "/timer";
 
   useEffect(() => {
-    if (mounted && !onboarded && !isOnboarding) router.replace("/onboarding");
-  }, [mounted, onboarded, isOnboarding, router]);
+    if (mounted && !onboarded && !allowedBeforeOnboarding) router.replace("/onboarding");
+  }, [mounted, onboarded, allowedBeforeOnboarding, router]);
 
-  if (!mounted || (!onboarded && !isOnboarding)) {
+  if (!mounted || (!onboarded && !allowedBeforeOnboarding)) {
     return (
       <div className="grid min-h-dvh place-items-center">
         <div className="text-center">
@@ -60,6 +63,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <TimerWatcher />
       <NotificationWatcher />
       <ServiceWorkerRegister />
+      <CloudSync />
+      <PushBridge />
       <main
         className={
           isOnboarding

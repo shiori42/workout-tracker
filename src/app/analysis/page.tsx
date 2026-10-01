@@ -14,9 +14,10 @@ import {
   YAxis,
 } from "recharts";
 import { useApp } from "@/lib/store";
-import type { BodyPart, Muscle } from "@/lib/types";
+import type { AIReport, BodyPart, Muscle } from "@/lib/types";
 import {
   bestStreak,
+  buildReportInput,
   bodyWeightAt,
   calcBmi,
   changeRate,
@@ -405,6 +406,30 @@ function CompareSection({
 function ReportSection({ month }: { month: string }) {
   const data = useApp();
   const report = data.reports[month];
+  const [busy, setBusy] = useState(false);
+
+  const generate = async () => {
+    setBusy(true);
+    const state = useApp.getState();
+    let next: AIReport | null = null;
+    try {
+      const res = await fetch("/api/ai/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildReportInput(state, month)),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { report: Pick<AIReport, "summary" | "highlights" | "cautions" | "suggestions"> };
+        next = { ...json.report, month, generatedAt: Date.now(), source: "ai" };
+      }
+    } catch {
+      /* オフライン等は定型レポートにフォールバック */
+    }
+    if (!next) next = { ...generateReport(state, month), source: "template" };
+    state.saveReport(next);
+    setBusy(false);
+    toast(next.source === "ai" ? "AIレポートを生成しました" : "レポートを生成しました", fmtMonth(month), "✨");
+  };
 
   return (
     <Card
@@ -417,12 +442,10 @@ function ReportSection({ month }: { month: string }) {
         <Button
           size="sm"
           variant={report ? "secondary" : "primary"}
-          onClick={() => {
-            data.saveReport(generateReport(data, month));
-            toast("レポートを生成しました", fmtMonth(month), "✨");
-          }}
+          disabled={busy}
+          onClick={() => void generate()}
         >
-          {report ? "更新" : "生成"}
+          {busy ? "生成中…" : report ? "更新" : "生成"}
         </Button>
       }
     >
@@ -437,7 +460,11 @@ function ReportSection({ month }: { month: string }) {
           <ReportList title="偏り・休養の注意点" icon="⚠️" items={report.cautions} color="text-yellow-300" />
           <ReportList title="翌月の提案" icon="🎯" items={report.suggestions} color="text-accent" />
           <p className="text-[10px] leading-relaxed text-muted">
-            生成日時：{fmtDateTime(report.generatedAt)} ／ 外部AI API未設定のため、アプリ内の集計データから定型レポートを作成しています。身体写真は送信・利用しません。医療的な診断ではありません。
+            生成日時：{fmtDateTime(report.generatedAt)} ／{" "}
+            {report.source === "ai"
+              ? "外部AIで生成（送信したのは月間の集計値のみ。写真・メモ・ニックネームは送信していません）。"
+              : "アプリ内の集計データから定型レポートを作成しています（外部AI未設定またはオフライン）。身体写真は利用しません。"}
+            医療的な診断ではありません。
           </p>
         </div>
       )}
