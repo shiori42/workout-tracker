@@ -13,11 +13,11 @@ export const BODY_PARTS: Record<BodyPart, string> = {
   chest: "胸",
   back: "背中",
   shoulder: "肩",
-  biceps: "上腕二頭筋",
-  triceps: "上腕三頭筋",
+  biceps: "腕（二頭）",
+  triceps: "腕（三頭）",
   forearm: "前腕",
   abs: "腹",
-  legs: "脚",
+  legs: "脚・尻",
   other: "その他",
 };
 
@@ -139,52 +139,56 @@ type Row = [
   muscles: Partial<Record<Muscle, number>>,
 ];
 
-/* 回数欄の単位：プランク・サイドプランク・ダンベル保持は「秒」 */
+/* 種目名・部位・並び順は「筋トレ種目_フォームポイント一覧.xlsx」に準拠。
+   回数欄の単位：ダンベル保持・プランク・サイドプランクは「秒」 */
 const ROWS: Row[] = [
   // 胸
-  ["dbFloorPress", "ダンベルフロアプレス", "chest", "dumbbell", "per_hand", 10, 10, 90, "moderate", "主に効く：大胸筋・三頭筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
-  ["dbFly", "ダンベルフライ（床）", "chest", "dumbbell", "per_hand", 6, 12, 60, "light", "主に効く：大胸筋", { chest: 1, shoulder: 0.2 }],
-  ["bbFloorPress", "バーベルフロアプレス", "chest", "barbell", "total", 30, 10, 90, "high", "主に効く：大胸筋・三頭筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
-  ["pushup", "ノーマル腕立て", "chest", "bodyweight", "total", 0, 15, 60, "moderate", "主に効く：大胸筋・三頭筋", { chest: 1, triceps: 0.5, shoulder: 0.3, abs: 0.2 }],
-  ["widePushup", "ワイド腕立て", "chest", "bodyweight", "total", 0, 12, 60, "moderate", "主に効く：大胸筋メイン", { chest: 1, shoulder: 0.3, triceps: 0.2 }],
-  ["narrowPushup", "ナロー腕立て", "chest", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：三頭筋・胸", { triceps: 1, chest: 0.6, shoulder: 0.2 }],
-  ["diamondPushup", "ダイヤモンド腕立て", "chest", "bodyweight", "total", 0, 8, 60, "high", "主に効く：三頭筋・胸（きつければ膝つき）", { triceps: 1, chest: 0.5 }],
+  ["dbFloorPress", "ダンベルフロアプレス", "chest", "dumbbell", "per_hand", 10, 10, 90, "moderate", "主に効く：大胸筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
+  ["dbFly", "ダンベルフライ（床）", "chest", "dumbbell", "per_hand", 6, 12, 60, "light", "主に効く：大胸筋", { chest: 1, shoulder: 0.3 }],
+  ["bbFloorPress", "バーベルフロアプレス", "chest", "barbell", "total", 30, 10, 90, "high", "主に効く：大胸筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
+  ["pushup", "ノーマルプッシュアップ", "chest", "bodyweight", "total", 0, 15, 60, "moderate", "主に効く：大胸筋", { chest: 1, triceps: 0.5, shoulder: 0.3, abs: 0.2 }],
+  ["widePushup", "ワイドプッシュアップ", "chest", "bodyweight", "total", 0, 12, 60, "moderate", "主に効く：大胸筋", { chest: 1, shoulder: 0.3, triceps: 0.3 }],
+  // 腕（三頭）
+  ["narrowPushup", "ナロープッシュアップ", "triceps", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：上腕三頭筋", { triceps: 1, chest: 0.6, shoulder: 0.2 }],
+  ["diamondPushup", "ダイヤモンドプッシュアップ", "triceps", "bodyweight", "total", 0, 8, 60, "high", "主に効く：上腕三頭筋", { triceps: 1, chest: 0.5 }],
   // 肩
-  ["shoulderPress", "ショルダープレス", "shoulder", "dumbbell", "per_hand", 8, 10, 90, "moderate", "主に効く：三角筋・三頭筋", { shoulder: 1, triceps: 0.5 }],
-  ["sideRaise", "サイドレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋の横。肩幅狙い", { shoulder: 1 }],
-  ["frontRaise", "フロントレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋の前", { shoulder: 1, chest: 0.2 }],
-  ["rearRaise", "リアレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋の後ろ", { shoulder: 1, back: 0.4 }],
-  ["pikePushup", "パイクプッシュアップ", "shoulder", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：三角筋・三頭筋", { shoulder: 1, triceps: 0.5 }],
+  ["shoulderPress", "ダンベルショルダープレス", "shoulder", "dumbbell", "per_hand", 8, 10, 90, "moderate", "主に効く：三角筋", { shoulder: 1, triceps: 0.5 }],
+  ["sideRaise", "サイドレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋中部", { shoulder: 1, back: 0.2 }],
+  ["frontRaise", "フロントレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋前部", { shoulder: 1, chest: 0.2 }],
+  ["rearRaise", "リアレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋後部", { shoulder: 1, back: 0.4 }],
+  ["pikePushup", "パイクプッシュアップ", "shoulder", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：三角筋", { shoulder: 1, triceps: 0.5 }],
   // 背中
-  ["oneHandRow", "ワンハンドロウ", "back", "dumbbell", "left_right", 10, 10, 90, "moderate", "主に効く：広背筋・僧帽筋", { back: 1, biceps: 0.4, forearm: 0.2 }],
-  ["dbBentRow", "ダンベルベントオーバーロウ", "back", "dumbbell", "per_hand", 10, 10, 90, "moderate", "主に効く：広背筋・背中中央", { back: 1, biceps: 0.4, forearm: 0.2 }],
-  ["bbBentRow", "バーベルベントオーバーロウ", "back", "barbell", "total", 30, 10, 90, "high", "主に効く：広背筋・僧帽筋・二頭筋", { back: 1, biceps: 0.5, forearm: 0.3 }],
-  ["rdl", "ルーマニアンデッドリフト", "back", "barbell", "total", 30, 10, 90, "high", "主に効く：ハムストリングス・尻・脊柱起立筋（ダンベルでも可）", { hamstrings: 1, glutes: 0.8, back: 0.5, forearm: 0.2 }],
-  // 力こぶ
+  ["oneHandRow", "ワンハンドダンベルロウ", "back", "dumbbell", "left_right", 10, 10, 90, "moderate", "主に効く：広背筋", { back: 1, biceps: 0.4, shoulder: 0.2, forearm: 0.2 }],
+  ["dbBentRow", "ダンベルベントオーバーロウ", "back", "dumbbell", "per_hand", 10, 10, 90, "moderate", "主に効く：広背筋・僧帽筋", { back: 1, biceps: 0.4, shoulder: 0.2, forearm: 0.2 }],
+  ["bbBentRow", "バーベルベントオーバーロウ", "back", "barbell", "total", 30, 10, 90, "high", "主に効く：広背筋・僧帽筋", { back: 1, biceps: 0.5, shoulder: 0.2, forearm: 0.3 }],
+  // 腕（二頭）
   ["dbCurl", "ダンベルカール", "biceps", "dumbbell", "per_hand", 8, 10, 60, "light", "主に効く：上腕二頭筋", { biceps: 1, forearm: 0.3 }],
-  ["hammerCurl", "ハンマーカール", "biceps", "dumbbell", "per_hand", 8, 10, 60, "light", "主に効く：上腕筋・二頭筋・前腕", { biceps: 0.8, forearm: 0.8 }],
+  ["hammerCurl", "ハンマーカール", "biceps", "dumbbell", "per_hand", 8, 10, 60, "light", "主に効く：上腕筋・腕橈骨筋", { biceps: 0.8, forearm: 0.8 }],
   ["bbCurl", "バーベルカール", "biceps", "barbell", "total", 20, 10, 60, "moderate", "主に効く：上腕二頭筋", { biceps: 1, forearm: 0.3 }],
-  // 二の腕裏
-  ["ohExtension", "オーバーヘッドトライセプスエクステンション", "triceps", "dumbbell", "total", 10, 10, 60, "light", "主に効く：上腕三頭筋", { triceps: 1 }],
-  ["narrowFloorPress", "ナローフロアプレス", "triceps", "dumbbell", "per_hand", 8, 10, 60, "moderate", "主に効く：上腕三頭筋・胸（連結バーでも可）", { triceps: 1, chest: 0.5 }],
+  // 腕（三頭）
+  ["ohExtension", "オーバーヘッドトライセプスエクステンション", "triceps", "dumbbell", "total", 10, 10, 60, "light", "主に効く：上腕三頭筋", { triceps: 1, shoulder: 0.2 }],
+  ["narrowFloorPress", "ナローフロアプレス", "triceps", "dumbbell", "per_hand", 8, 10, 60, "moderate", "主に効く：上腕三頭筋（連結バーでも可）", { triceps: 1, chest: 0.5 }],
+  // 前腕
+  ["wristCurl", "リストカール", "forearm", "dumbbell", "per_hand", 6, 15, 45, "light", "主に効く：前腕屈筋群", { forearm: 1 }],
+  ["reverseWristCurl", "リバースリストカール", "forearm", "dumbbell", "per_hand", 4, 15, 45, "light", "主に効く：前腕伸筋群", { forearm: 1 }],
+  ["reverseCurl", "リバースカール", "forearm", "dumbbell", "per_hand", 6, 12, 60, "light", "主に効く：腕橈骨筋・前腕伸筋群（連結バーでも可）", { forearm: 1, biceps: 0.5 }],
   // 前腕・握力
-  ["wristCurl", "リストカール", "forearm", "dumbbell", "per_hand", 6, 15, 45, "light", "主に効く：前腕の手のひら側", { forearm: 1 }],
-  ["reverseWristCurl", "リバースリストカール", "forearm", "dumbbell", "per_hand", 4, 15, 45, "light", "主に効く：前腕の手の甲側", { forearm: 1 }],
-  ["reverseCurl", "リバースカール", "forearm", "dumbbell", "per_hand", 6, 12, 60, "light", "主に効く：腕橈骨筋・前腕（連結バーでも可）", { forearm: 1, biceps: 0.5 }],
-  ["handgrip", "ハンドグリップ", "forearm", "handgrip", "total", 0, 20, 30, "light", "主に効く：握力・前腕", { forearm: 1 }],
-  ["dbHold", "ダンベル保持", "forearm", "dumbbell", "per_hand", 12, 30, 45, "light", "主に効く：握力・前腕（回数欄は秒数）", { forearm: 1, back: 0.2 }],
+  ["handgrip", "ハンドグリップ", "forearm", "handgrip", "total", 0, 20, 30, "light", "主に効く：前腕屈筋群・握力", { forearm: 1 }],
+  ["dbHold", "ダンベル保持（ファーマーズホールド）", "forearm", "dumbbell", "per_hand", 12, 30, 45, "light", "主に効く：握力・前腕（回数欄は秒数）", { forearm: 1, back: 0.2, abs: 0.2 }],
   // 腹
-  ["abRoller", "腹筋ローラー", "abs", "abroller", "total", 0, 10, 60, "high", "主に効く：腹直筋・体幹", { abs: 1, back: 0.3, shoulder: 0.2 }],
+  ["abRoller", "腹筋ローラー（膝コロ）", "abs", "abroller", "total", 0, 10, 60, "high", "主に効く：腹直筋・腹横筋", { abs: 1, back: 0.3, shoulder: 0.2, triceps: 0.2 }],
   ["crunch", "クランチ", "abs", "bodyweight", "total", 0, 20, 45, "light", "主に効く：腹直筋", { abs: 1 }],
   ["legRaise", "レッグレイズ", "abs", "bodyweight", "total", 0, 15, 45, "moderate", "主に効く：腹直筋下部・腸腰筋", { abs: 1, quads: 0.2 }],
-  ["plank", "プランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹筋全体・体幹（回数欄は秒数）", { abs: 1, shoulder: 0.2 }],
-  ["sidePlank", "サイドプランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹斜筋（回数欄は秒数）", { abs: 1 }],
+  ["plank", "プランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹横筋・腹直筋（回数欄は秒数）", { abs: 1, shoulder: 0.2, glutes: 0.2 }],
+  ["sidePlank", "サイドプランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹斜筋（回数欄は片側の秒数）", { abs: 1, glutes: 0.2, shoulder: 0.2 }],
   // 脚・尻
-  ["gobletSquat", "ゴブレットスクワット", "legs", "dumbbell", "total", 12, 12, 90, "moderate", "主に効く：太もも前・尻", { quads: 1, glutes: 0.7, hamstrings: 0.3, abs: 0.2 }],
-  ["dbSquat", "ダンベルスクワット", "legs", "dumbbell", "per_hand", 10, 12, 90, "moderate", "主に効く：太もも・尻", { quads: 1, glutes: 0.7, hamstrings: 0.4 }],
-  ["bulgarian", "ブルガリアンスクワット", "legs", "dumbbell", "per_hand", 6, 10, 90, "high", "主に効く：尻・太もも（椅子を使用）", { glutes: 1, quads: 0.9, hamstrings: 0.4 }],
-  ["hipLift", "ヒップリフト", "legs", "bodyweight", "total", 0, 15, 60, "light", "主に効く：大臀筋・ハムストリングス（ダンベルを乗せても可）", { glutes: 1, hamstrings: 0.6 }],
-  ["calfRaise", "カーフレイズ", "legs", "bodyweight", "total", 0, 20, 45, "light", "主に効く：ふくらはぎ（ダンベルを持っても可）", { calves: 1 }],
+  ["gobletSquat", "ゴブレットスクワット", "legs", "dumbbell", "total", 12, 12, 90, "moderate", "主に効く：大腿四頭筋・大臀筋", { quads: 1, glutes: 0.7, hamstrings: 0.3, abs: 0.2 }],
+  ["dbSquat", "ダンベルスクワット", "legs", "dumbbell", "per_hand", 10, 12, 90, "moderate", "主に効く：大腿四頭筋・大臀筋", { quads: 1, glutes: 0.7, hamstrings: 0.4 }],
+  ["bulgarian", "ブルガリアンスクワット", "legs", "dumbbell", "per_hand", 6, 10, 90, "high", "主に効く：大臀筋・大腿四頭筋（椅子等を使用）", { glutes: 1, quads: 0.9, hamstrings: 0.4 }],
+  ["rdl", "ルーマニアンデッドリフト", "legs", "barbell", "total", 30, 10, 90, "high", "主に効く：ハムストリングス・大臀筋（ダンベルでも可）", { hamstrings: 1, glutes: 0.8, back: 0.5, forearm: 0.2 }],
+  // 尻・脚
+  ["hipLift", "ヒップリフト", "legs", "bodyweight", "total", 0, 15, 60, "light", "主に効く：大臀筋（ダンベルを乗せても可）", { glutes: 1, hamstrings: 0.6 }],
+  ["calfRaise", "カーフレイズ", "legs", "bodyweight", "total", 0, 20, 45, "light", "主に効く：下腿三頭筋（ダンベルを持っても可）", { calves: 1 }],
 ];
 
 export const SAMPLE_EXERCISES: SampleExercise[] = ROWS.map(
@@ -207,9 +211,9 @@ export const SAMPLE_EXERCISES: SampleExercise[] = ROWS.map(
 
 export const SAMPLE_TEMPLATES: { name: string; keys: string[] }[] = [
   { name: "胸＋三頭の日", keys: ["dbFloorPress", "dbFly", "pushup", "narrowPushup", "ohExtension"] },
-  { name: "背中＋二頭の日", keys: ["oneHandRow", "dbBentRow", "rdl", "dbCurl", "hammerCurl"] },
+  { name: "背中＋二頭の日", keys: ["oneHandRow", "dbBentRow", "bbBentRow", "dbCurl", "hammerCurl"] },
   { name: "肩＋前腕の日", keys: ["shoulderPress", "sideRaise", "rearRaise", "wristCurl", "reverseWristCurl", "handgrip"] },
-  { name: "脚＋腹の日", keys: ["gobletSquat", "bulgarian", "hipLift", "calfRaise", "abRoller", "plank"] },
+  { name: "脚＋腹の日", keys: ["gobletSquat", "bulgarian", "rdl", "calfRaise", "abRoller", "plank"] },
 ];
 
 /** サンプル適用時の曜日スケジュール（index = 曜日, 0=日） */

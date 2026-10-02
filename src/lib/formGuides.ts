@@ -1,5 +1,5 @@
 export interface FormGuide {
-  /** 一覧表（Excel）での種目名。アプリ側の名前と異なる場合の検索用 */
+  /** 旧名・別名。検索と既存種目のID引き継ぎに使う */
   aliases: string[];
   primary: string;
   secondary: string;
@@ -61,7 +61,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "中級",
   }),
   pushup: g({
-    aliases: ["ノーマルプッシュアップ"],
+    aliases: ["ノーマル腕立て"],
     primary: "大胸筋",
     secondary: "上腕三頭筋・三角筋前部",
     setup: "手を肩幅より少し広く置き、頭から踵まで一直線。",
@@ -74,7 +74,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "初級",
   }),
   widePushup: g({
-    aliases: ["ワイドプッシュアップ"],
+    aliases: ["ワイド腕立て"],
     primary: "大胸筋",
     secondary: "三角筋前部・上腕三頭筋",
     setup: "手を肩幅より広めに置き、体を一直線にする。",
@@ -87,7 +87,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "初級",
   }),
   narrowPushup: g({
-    aliases: ["ナロープッシュアップ", "ナロー／ダイヤモンド腕立て"],
+    aliases: ["ナロー腕立て", "ナロー／ダイヤモンド腕立て"],
     primary: "上腕三頭筋",
     secondary: "大胸筋・三角筋前部",
     setup: "手を肩幅程度〜少し狭めに置く。",
@@ -100,7 +100,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "中級",
   }),
   diamondPushup: g({
-    aliases: ["ダイヤモンドプッシュアップ"],
+    aliases: ["ダイヤモンド腕立て"],
     primary: "上腕三頭筋",
     secondary: "大胸筋",
     setup: "胸の下で親指と人差し指を近づけて手を置く。",
@@ -113,7 +113,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "中級",
   }),
   shoulderPress: g({
-    aliases: ["ダンベルショルダープレス"],
+    aliases: ["ショルダープレス"],
     primary: "三角筋",
     secondary: "上腕三頭筋",
     setup: "背筋を伸ばして立つか座る。ダンベルを肩の横で構える。",
@@ -174,7 +174,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "中級",
   }),
   oneHandRow: g({
-    aliases: ["ワンハンドダンベルロウ"],
+    aliases: ["ワンハンドロウ"],
     primary: "広背筋",
     secondary: "僧帽筋・上腕二頭筋・三角筋後部",
     setup: "片手を椅子や台に置き、背中を床とほぼ平行にする。",
@@ -331,7 +331,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "初級",
   }),
   dbHold: g({
-    aliases: ["ダンベル保持（ファーマーズホールド）", "ファーマーズホールド"],
+    aliases: ["ダンベル保持", "ファーマーズホールド"],
     primary: "握力・前腕",
     secondary: "僧帽筋・体幹",
     setup: "両手にダンベルを持ち、胸を張って直立。",
@@ -344,7 +344,7 @@ export const FORM_GUIDES: Record<string, FormGuide> = {
     level: "初級",
   }),
   abRoller: g({
-    aliases: ["腹筋ローラー（膝コロ）", "膝コロ"],
+    aliases: ["腹筋ローラー", "膝コロ"],
     primary: "腹直筋・腹横筋",
     secondary: "広背筋・肩・上腕三頭筋",
     setup: "膝を床につき、ローラーを肩の真下付近で持つ。",
