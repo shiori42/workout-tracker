@@ -157,7 +157,8 @@ function buildSampleExercises(current: Exercise[], overwrite = false) {
   const keyToId: Record<string, string> = {};
   const now = Date.now();
   const exercises = SAMPLE_EXERCISES.map((s, i): Exercise => {
-    const existing = current.find((e) => e.name === s.name);
+    const existing =
+      current.find((e) => e.name === s.name) ?? current.find((e) => s.aliases.includes(e.name));
     const id = existing?.id ?? uid();
     keyToId[s.key] = id;
     if (existing && !overwrite) return existing;

@@ -7,6 +7,7 @@ import type {
   PhotoKind,
   WeightMode,
 } from "./types";
+import { FORM_GUIDES } from "./formGuides";
 
 export const BODY_PARTS: Record<BodyPart, string> = {
   chest: "胸",
@@ -110,6 +111,8 @@ export const DEFAULT_BODY_WEIGHT = 60;
 export interface SampleExercise {
   key: string;
   name: string;
+  /** 旧名・別名。既存種目のID引き継ぎに使う */
+  aliases: string[];
   bodyPart: BodyPart;
   equipment: Equipment;
   weightMode: WeightMode;
@@ -144,7 +147,8 @@ const ROWS: Row[] = [
   ["bbFloorPress", "バーベルフロアプレス", "chest", "barbell", "total", 30, 10, 90, "high", "主に効く：大胸筋・三頭筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
   ["pushup", "ノーマル腕立て", "chest", "bodyweight", "total", 0, 15, 60, "moderate", "主に効く：大胸筋・三頭筋", { chest: 1, triceps: 0.5, shoulder: 0.3, abs: 0.2 }],
   ["widePushup", "ワイド腕立て", "chest", "bodyweight", "total", 0, 12, 60, "moderate", "主に効く：大胸筋メイン", { chest: 1, shoulder: 0.3, triceps: 0.2 }],
-  ["narrowPushup", "ナロー／ダイヤモンド腕立て", "chest", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：三頭筋・胸", { triceps: 1, chest: 0.6, shoulder: 0.2 }],
+  ["narrowPushup", "ナロー腕立て", "chest", "bodyweight", "total", 0, 10, 60, "moderate", "主に効く：三頭筋・胸", { triceps: 1, chest: 0.6, shoulder: 0.2 }],
+  ["diamondPushup", "ダイヤモンド腕立て", "chest", "bodyweight", "total", 0, 8, 60, "high", "主に効く：三頭筋・胸（きつければ膝つき）", { triceps: 1, chest: 0.5 }],
   // 肩
   ["shoulderPress", "ショルダープレス", "shoulder", "dumbbell", "per_hand", 8, 10, 90, "moderate", "主に効く：三角筋・三頭筋", { shoulder: 1, triceps: 0.5 }],
   ["sideRaise", "サイドレイズ", "shoulder", "dumbbell", "per_hand", 4, 12, 60, "light", "主に効く：三角筋の横。肩幅狙い", { shoulder: 1 }],
@@ -187,12 +191,13 @@ export const SAMPLE_EXERCISES: SampleExercise[] = ROWS.map(
   ([key, name, bodyPart, equipment, weightMode, defaultWeight, defaultReps, restSec, intensity, memo, muscles]) => ({
     key,
     name,
+    aliases: FORM_GUIDES[key]?.aliases ?? [],
     bodyPart,
     equipment,
     weightMode,
     defaultWeight,
     defaultReps,
-    defaultSets: 3,
+    defaultSets: FORM_GUIDES[key]?.sets ?? 3,
     restSec,
     intensity,
     memo,

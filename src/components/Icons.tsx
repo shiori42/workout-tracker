@@ -161,3 +161,10 @@ export const HistoryIcon = ({ size, ...p }: P) => (
     <path d="M3 3v5h5M12 7v5l3 2" />
   </svg>
 );
+
+export const BookIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+    <path d="M4 21V5M9 7h6" />
+  </svg>
+);

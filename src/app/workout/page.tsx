@@ -34,6 +34,7 @@ import {
   TextArea,
   cx,
 } from "@/components/ui";
+import { FormGuideSheet, formGuideFor } from "@/components/FormGuide";
 import {
   CheckIcon,
   DownIcon,
@@ -415,6 +416,7 @@ function ExerciseCard({
 }) {
   const data = useApp();
   const [memoOpen, setMemoOpen] = useState(!!ex.memo);
+  const [guideOpen, setGuideOpen] = useState(false);
   const doneCount = ex.sets.filter((s) => s.done).length;
   const complete = ex.sets.length > 0 && doneCount === ex.sets.length;
   const first = ex.sets[0];
@@ -530,6 +532,11 @@ function ExerciseCard({
           </Button>
         )}
         <div className="ml-auto flex gap-1">
+          {formGuideFor(ex.name) && (
+            <Button variant="ghost" size="sm" onClick={() => setGuideOpen(true)}>
+              フォーム
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setMemoOpen((v) => !v)}>
             メモ
           </Button>
@@ -551,6 +558,7 @@ function ExerciseCard({
           onChange={(e) => data.updateSessionExercise(sessionId, ex.uid, { memo: e.target.value })}
         />
       )}
+      <FormGuideSheet name={guideOpen ? ex.name : null} onClose={() => setGuideOpen(false)} />
     </section>
   );
 }

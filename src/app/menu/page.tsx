@@ -32,7 +32,9 @@ import {
   TextArea,
   cx,
 } from "@/components/ui";
+import { FormGuideSheet, formGuideFor } from "@/components/FormGuide";
 import {
+  BookIcon,
   CopyIcon,
   DownIcon,
   EditIcon,
@@ -99,6 +101,7 @@ function ExercisesTab() {
   const data = useApp();
   const [editing, setEditing] = useState<{ id?: string; value: ExerciseInput } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
+  const [guideName, setGuideName] = useState<string | null>(null);
   const [filter, setFilter] = useState<BodyPart | "all">("all");
   const [confirmDelete, setConfirmDelete] = useState<Exercise | null>(null);
 
@@ -159,6 +162,11 @@ function ExercisesTab() {
               </div>
             </div>
             <div className="mt-2 flex justify-end gap-1 border-t border-line/50 pt-2">
+              {formGuideFor(e.name) && (
+                <IconBtn label="フォーム" onClick={() => setGuideName(e.name)}>
+                  <BookIcon size={16} />
+                </IconBtn>
+              )}
               <IconBtn label="履歴" onClick={() => setHistoryId(e.id)}>
                 <HistoryIcon size={16} />
               </IconBtn>
@@ -198,6 +206,7 @@ function ExercisesTab() {
       )}
 
       <ExerciseHistory id={historyId} onClose={() => setHistoryId(null)} />
+      <FormGuideSheet name={guideName} onClose={() => setGuideName(null)} />
 
       <Sheet
         open={!!confirmDelete}
