@@ -17,7 +17,7 @@ import type {
   WorkoutSet,
 } from "./types";
 import { ymd } from "./date";
-import { SAMPLE_EXERCISES, SAMPLE_TEMPLATES } from "./constants";
+import { SAMPLE_EXERCISES, SAMPLE_TEMPLATES, SAMPLE_WEEKDAYS } from "./constants";
 
 export const uid = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -127,6 +127,8 @@ interface AppActions {
   markNotified: (key: string, value: string) => void;
 
   loadSamples: () => void;
+  /** 種目・テンプレート・曜日スケジュールを標準メニューに置き換える（同名種目はIDを引き継ぎ履歴を保持） */
+  replaceWithSamples: () => void;
   importData: (data: Partial<AppData>) => void;
   resetAll: () => void;
 }
@@ -149,6 +151,37 @@ const initialData = (): AppData => ({
   achievedAt: {},
   notifLog: {},
 });
+
+/** 標準メニューの種目を生成する。同名の既存種目はIDを引き継ぐ（overwrite 時は内容を標準値で更新） */
+function buildSampleExercises(current: Exercise[], overwrite = false) {
+  const keyToId: Record<string, string> = {};
+  const now = Date.now();
+  const exercises = SAMPLE_EXERCISES.map((s, i): Exercise => {
+    const existing = current.find((e) => e.name === s.name);
+    const id = existing?.id ?? uid();
+    keyToId[s.key] = id;
+    if (existing && !overwrite) return existing;
+    return {
+      id,
+      name: s.name,
+      bodyPart: s.bodyPart,
+      equipment: s.equipment,
+      weightMode: s.weightMode,
+      defaultWeight: s.defaultWeight,
+      defaultReps: s.defaultReps,
+      defaultSets: s.defaultSets,
+      restSec: s.restSec,
+      intensity: s.intensity,
+      memo: s.memo,
+      muscles: s.muscles,
+      createdAt: existing?.createdAt ?? now + i,
+    };
+  });
+  return { exercises, keyToId };
+}
+
+const sampleSchedule = (templates: Template[]) =>
+  SAMPLE_WEEKDAYS.map((v) => (v === null || v === "rest" ? v : (templates.find((t) => t.name === v)?.id ?? null)));
 
 /** 種目の前回実績（MN-10）。なければ既定値から生成 */
 function initialSetsFor(
@@ -237,9 +270,14 @@ export const useApp = create<AppState>()(
         },
         updateExercise: (id, patch) =>
           set((st) => ({
-            exercises: st.exercises.map((e) =>
-              e.id === id ? { ...e, ...patch } : e,
-            ),
+            exercises: st.exercises.map((e) => {
+              if (e.id !== id) return e;
+              const next = { ...e, ...patch };
+              if (patch.bodyPart && patch.bodyPart !== e.bodyPart && !("muscles" in patch && patch.muscles !== e.muscles)) {
+                delete next.muscles;
+              }
+              return next;
+            }),
           })),
         deleteExercise: (id) =>
           set((st) => ({
@@ -473,29 +511,8 @@ export const useApp = create<AppState>()(
 
         loadSamples: () => {
           const st = get();
-          const keyToId: Record<string, string> = {};
-          const newExercises: Exercise[] = SAMPLE_EXERCISES.map((s) => {
-            const existing = st.exercises.find((e) => e.name === s.name);
-            const id = existing?.id ?? uid();
-            keyToId[s.key] = id;
-            return existing ?? {
-              id,
-              name: s.name,
-              bodyPart: s.bodyPart,
-              equipment: s.equipment,
-              weightMode: s.weightMode,
-              defaultWeight: s.defaultWeight,
-              defaultReps: s.defaultReps,
-              defaultSets: s.defaultSets,
-              restSec: s.restSec,
-              intensity: s.intensity,
-              memo: "",
-              createdAt: Date.now(),
-            };
-          });
-          const added = newExercises.filter(
-            (e) => !st.exercises.some((x) => x.id === e.id),
-          );
+          const { exercises: sampleExercises, keyToId } = buildSampleExercises(st.exercises);
+          const added = sampleExercises.filter((e) => !st.exercises.some((x) => x.id === e.id));
           const newTemplates: Template[] = SAMPLE_TEMPLATES.filter(
             (t) => !st.templates.some((x) => x.name === t.name),
           ).map((t) => ({
@@ -504,23 +521,28 @@ export const useApp = create<AppState>()(
             exerciseIds: t.keys.map((k) => keyToId[k]),
           }));
           const templates = [...st.templates, ...newTemplates];
-          const byName = (n: string) => templates.find((t) => t.name === n)?.id ?? null;
           const schedule = st.weekdaySchedule.some((w) => w !== null)
             ? st.weekdaySchedule
-            : [
-                "rest",
-                byName("胸の日"),
-                byName("背中＋腕の日"),
-                "rest",
-                byName("肩＋腹の日"),
-                byName("脚の日"),
-                "rest",
-              ];
+            : sampleSchedule(templates);
           set({
             exercises: [...st.exercises, ...added],
             templates,
             weekdaySchedule: schedule,
           });
+        },
+        replaceWithSamples: () => {
+          const st = get();
+          const { exercises, keyToId } = buildSampleExercises(st.exercises, true);
+          const templates: Template[] = SAMPLE_TEMPLATES.map((t) => ({
+            id: st.templates.find((x) => x.name === t.name)?.id ?? uid(),
+            name: t.name,
+            exerciseIds: t.keys.map((k) => keyToId[k]),
+          }));
+          const templateIds = new Set(templates.map((t) => t.id));
+          const dateAssignments = Object.fromEntries(
+            Object.entries(st.dateAssignments).filter(([, v]) => v === "rest" || v === "none" || templateIds.has(v)),
+          );
+          set({ exercises, templates, weekdaySchedule: sampleSchedule(templates), dateAssignments });
         },
         importData: (data) => set((st) => ({ ...st, ...data })),
         resetAll: () => set({ ...initialData() }),

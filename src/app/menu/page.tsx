@@ -464,7 +464,7 @@ function TemplatesTab() {
       <Button className="w-full" onClick={() => setEditing({ name: "", ids: [] })}>
         <PlusIcon size={16} /> テンプレートを作成
       </Button>
-      {data.templates.length === 0 && <Empty>「胸の日」「肩＋腹の日」など、複数種目をまとめて保存できます。</Empty>}
+      {data.templates.length === 0 && <Empty>「胸＋三頭の日」「脚＋腹の日」など、複数種目をまとめて保存できます。</Empty>}
       <ul className="space-y-2">
         {data.templates.map((t) => {
           const days = data.weekdaySchedule
@@ -523,7 +523,7 @@ function TemplatesTab() {
         >
           <div className="space-y-4">
             <Field label="テンプレート名">
-              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="例：胸の日" />
+              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="例：胸＋三頭の日" />
             </Field>
             <div>
               <div className="mb-1 text-xs font-bold text-muted">種目（実施順）</div>

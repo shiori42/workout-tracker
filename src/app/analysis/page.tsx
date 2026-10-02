@@ -104,7 +104,8 @@ export default function AnalysisPage() {
 
 function FatigueSection() {
   const sessions = useApp((s) => s.sessions);
-  const fatigue = useMemo(() => computeFatigue(sessions), [sessions]);
+  const exercises = useApp((s) => s.exercises);
+  const fatigue = useMemo(() => computeFatigue(sessions, undefined, exercises), [sessions, exercises]);
   const [selected, setSelected] = useState<Muscle | null>(null);
   const sel = selected ? fatigue[selected] : null;
   const ranking = (Object.entries(fatigue) as [Muscle, (typeof fatigue)[Muscle]][])

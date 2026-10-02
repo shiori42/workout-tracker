@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { clear as clearPhotos } from "idb-keyval";
 import { exportData, useApp, type AppData } from "@/lib/store";
-import { GOAL_PRESETS } from "@/lib/constants";
+import { GOAL_PRESETS, SAMPLE_EXERCISES, SAMPLE_TEMPLATES } from "@/lib/constants";
 import { ymd } from "@/lib/date";
 import {
   notificationPermission,
@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const s = data.settings;
   const [perm, setPerm] = useState(() => notificationPermission());
   const [resetOpen, setResetOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const doExport = () => {
@@ -219,6 +220,9 @@ export default function SettingsPage() {
             >
               サンプルメニューを追加
             </Button>
+            <Button variant="secondary" className="w-full" onClick={() => setReplaceOpen(true)}>
+              メニューを標準セット（{SAMPLE_EXERCISES.length}種目）に置き換え
+            </Button>
             <Button variant="danger" className="w-full" onClick={() => setResetOpen(true)}>
               すべてのデータを削除
             </Button>
@@ -228,6 +232,33 @@ export default function SettingsPage() {
 
         <p className="text-center text-[10px] text-muted">筋トレ管理アプリ v1.2</p>
       </div>
+
+      <Sheet
+        open={replaceOpen}
+        onClose={() => setReplaceOpen(false)}
+        title="メニューを置き換えますか？"
+        footer={
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" onClick={() => setReplaceOpen(false)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={() => {
+                data.replaceWithSamples();
+                setReplaceOpen(false);
+                toast("メニューを置き換えました", `${SAMPLE_EXERCISES.length}種目・${SAMPLE_TEMPLATES.length}テンプレート`, "✨");
+              }}
+            >
+              置き換える
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-relaxed text-muted">
+          種目・テンプレート・曜日スケジュールを標準セットに置き換えます（
+          {SAMPLE_TEMPLATES.map((t) => t.name).join("／")}）。同じ名前の種目は記録の履歴を引き継ぎます。トレーニング記録・食事・身体記録は消えません。
+        </p>
+      </Sheet>
 
       <Sheet
         open={resetOpen}

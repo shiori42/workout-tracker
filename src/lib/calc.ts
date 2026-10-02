@@ -2,6 +2,7 @@ import type {
   AIReport,
   BodyPart,
   BodyRecord,
+  Exercise,
   Intensity,
   Muscle,
   SessionExercise,
@@ -331,10 +332,16 @@ function setStimulus(e: SessionExercise, x: WorkoutSet) {
   return 11 * repsFactor * loadFactor * INTENSITY_MUL[e.intensity];
 }
 
+/** 種目の対象筋と寄与率（種目個別の設定 → 部位の既定値の順） */
+export const musclesOf = (e: Pick<Exercise, "bodyPart" | "muscles">) =>
+  e.muscles && Object.keys(e.muscles).length > 0 ? e.muscles : MUSCLE_MAP[e.bodyPart];
+
 export function computeFatigue(
   sessions: WorkoutSession[],
   now = Date.now(),
+  exercises: Exercise[] = [],
 ): Record<Muscle, MuscleFatigue> {
+  const byId = new Map(exercises.map((e) => [e.id, e]));
   const raw = Object.fromEntries(
     Object.keys(MUSCLES).map((m) => [m, { score: 0, sets7: 0, ex: new Map<string, number>() as Map<string, number>, lastAt: undefined as number | undefined }]),
   ) as Record<Muscle, { score: number; sets7: number; ex: Map<string, number>; lastAt?: number }>;
@@ -348,7 +355,9 @@ export function computeFatigue(
         if (hours > 24 * 14) continue;
         const stim = setStimulus(e, x);
         const decay = Math.exp(-hours / DECAY_HOURS);
-        for (const [m, rate] of Object.entries(MUSCLE_MAP[e.bodyPart]) as [Muscle, number][]) {
+        const master = byId.get(e.exerciseId);
+        const map = master && master.bodyPart === e.bodyPart ? musclesOf(master) : MUSCLE_MAP[e.bodyPart];
+        for (const [m, rate] of Object.entries(map) as [Muscle, number][]) {
           const r = raw[m];
           r.score += stim * rate * decay;
           if (rate >= 0.5) {
@@ -483,7 +492,7 @@ export function generateReport(data: AppData, month: string, today = ymd()): AIR
     if (missing.length > 0 && missing.length <= 5)
       cautions.push(`${missing.join("・")}は今月まだ実施していません。`);
   }
-  const fatigue = computeFatigue(data.sessions);
+  const fatigue = computeFatigue(data.sessions, Date.now(), data.exercises);
   const tired = (Object.entries(fatigue) as [Muscle, MuscleFatigue][]).filter(([, f]) => f.score >= 70);
   if (tired.length > 0)
     cautions.push(`${tired.map(([m]) => MUSCLES[m]).join("・")}の推定疲労度が高めです。48〜72時間の休養を目安にしてください。`);
@@ -660,7 +669,7 @@ export function buildReportInput(data: AppData, month: string, today = ymd()): R
     .filter(([name]) => prevBest.has(name))
     .map(([name, c]) => ({ exercise: name, previousBest: prevBest.get(name)!.v, currentBest: c.v, unit: c.unit }))
     .slice(0, 8);
-  const fatigue = computeFatigue(data.sessions);
+  const fatigue = computeFatigue(data.sessions, Date.now(), data.exercises);
   return {
     month,
     current: summarize(data, month, today),

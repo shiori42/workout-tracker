@@ -48,6 +48,8 @@ export interface Exercise {
   restSec: number;
   intensity: Intensity;
   memo: string;
+  /** 対象筋と寄与率。未指定なら部位の既定値（MUSCLE_MAP）を使う */
+  muscles?: Partial<Record<Muscle, number>>;
   createdAt: number;
 }
 

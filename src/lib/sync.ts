@@ -70,7 +70,7 @@ export function toRows(data: AppData, timerSeconds: { user: number; last: number
       memo: e.memo,
       created_at: iso(e.createdAt) ?? new Date(0).toISOString(),
     });
-    for (const [muscle, rate] of Object.entries(MUSCLE_MAP[e.bodyPart])) {
+    for (const [muscle, rate] of Object.entries(e.muscles && Object.keys(e.muscles).length > 0 ? e.muscles : MUSCLE_MAP[e.bodyPart])) {
       tables.exercise_muscle_map.push({
         id: `${e.id}:${muscle}`,
         exercise_id: e.id,
@@ -246,6 +246,18 @@ export function fromRows(
     createdAt: ms(r.created_at) ?? 0,
   }));
   exercises.sort((a, b) => a.createdAt - b.createdAt);
+  const muscleRows = rows("exercise_muscle_map");
+  for (const e of exercises) {
+    const map = Object.fromEntries(
+      muscleRows.filter((m) => m.exercise_id === e.id).map((m) => [String(m.body_part), Number(m.contribution_rate)]),
+    ) as Exercise["muscles"];
+    const defaults = MUSCLE_MAP[e.bodyPart];
+    const same =
+      map &&
+      Object.keys(map).length === Object.keys(defaults).length &&
+      Object.entries(defaults).every(([k, v]) => map[k as keyof typeof map] === v);
+    if (map && Object.keys(map).length > 0 && !same) e.muscles = map;
+  }
 
   const templates: Template[] = rows("workout_templates").map((r) => ({
     id: String(r.id),
