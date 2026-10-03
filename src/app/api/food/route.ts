@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { FoodItem } from "@/lib/foods";
+import { requireUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,8 @@ async function searchProducts(q: string): Promise<OffProduct[]> {
 }
 
 export async function GET(req: Request) {
+  const denied = await requireUser(req);
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const code = (searchParams.get("code") || "").replace(/\D/g, "");
   const q = (searchParams.get("q") || "").trim().slice(0, 60);

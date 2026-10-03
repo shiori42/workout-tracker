@@ -9,6 +9,9 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 /** Supabase の接続情報が設定されている場合のみクラウド機能を有効にする */
 export const cloudEnabled = !!(url && key);
 
+/** 本人専用モード：ログインしないとアプリを使えない（新規登録もできない） */
+export const requireLogin = cloudEnabled && process.env.NEXT_PUBLIC_REQUIRE_LOGIN === "true";
+
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient | null {

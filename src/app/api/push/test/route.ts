@@ -3,7 +3,7 @@ import { sendPush } from "@/lib/server/push";
 import { ensurePush, isEndpoint, json, readJson } from "../_shared";
 
 export async function POST(req: Request) {
-  const blocked = ensurePush();
+  const blocked = await ensurePush(req);
   if (blocked) return blocked;
   const b = await readJson<{ endpoint?: string }>(req);
   if (!isEndpoint(b?.endpoint)) return json({ error: "invalid_endpoint" }, 400);

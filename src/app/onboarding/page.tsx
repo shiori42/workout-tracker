@@ -6,7 +6,7 @@ import Link from "next/link";
 import { cloudEnabled } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
 import { calcBmi, bmiLabel } from "@/lib/calc";
-import { GOAL_PRESETS, SAMPLE_TEMPLATES } from "@/lib/constants";
+import { GOAL_PRESETS, SAMPLE_EXERCISES, SAMPLE_TEMPLATES } from "@/lib/constants";
 import { WEEKDAYS, ymd } from "@/lib/date";
 import { requestNotificationPermission } from "@/lib/notify";
 import { Button, Field, Input, NumberInput, Select, Toggle, cx } from "@/components/ui";
@@ -146,7 +146,7 @@ export default function OnboardingPage() {
               )}
             >
               <div className="font-bold">✨ 自宅トレ向けサンプルを使う</div>
-              <div className="mt-1 text-xs text-muted">ダンベル・腹筋ローラー・ハンドグリップ・自重の12種目</div>
+              <div className="mt-1 text-xs text-muted">ダンベル・バーベル・腹筋ローラー・ハンドグリップ・自重の{SAMPLE_EXERCISES.length}種目</div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {SAMPLE_TEMPLATES.map((t) => (
                   <span key={t.name} className="rounded-md bg-card2 px-2 py-0.5 text-[11px] font-bold">

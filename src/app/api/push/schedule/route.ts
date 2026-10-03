@@ -18,7 +18,7 @@ const MAX_AHEAD_MS = 60 * 60 * 1000;
 
 /** タイマー終了などの単発通知を予約する（同じ tag は置き換え） */
 export async function POST(req: Request) {
-  const blocked = ensurePush();
+  const blocked = await ensurePush(req);
   if (blocked) return blocked;
   const b = await readJson<Body>(req);
   if (!b || !isEndpoint(b.endpoint) || typeof b.at !== "number" || !b.title) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const blocked = ensurePush();
+  const blocked = await ensurePush(req);
   if (blocked) return blocked;
   const b = await readJson<Body>(req);
   if (!b || !isEndpoint(b.endpoint)) return json({ error: "invalid_request" }, 400);

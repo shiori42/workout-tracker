@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cloudEnabled, getSupabase, useCloud } from "@/lib/supabase";
+import { cloudEnabled, getSupabase, requireLogin, useCloud } from "@/lib/supabase";
 import { Button, Card, Field, Input, PageHeader, Segmented } from "@/components/ui";
 import { toast } from "@/lib/toast";
 import { useApp } from "@/lib/store";
@@ -101,7 +101,10 @@ export default function LoginPage() {
     const sb = getSupabase();
     if (!sb || !email) return;
     setBusy(true);
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo, shouldCreateUser: !requireLogin },
+    });
     setBusy(false);
     setMessage(error ? translate(error.message) : "ログイン用リンクをメールで送信しました。");
   };
@@ -114,20 +117,26 @@ export default function LoginPage() {
 
   return (
     <div>
-      <PageHeader title="ログイン" back />
+      <PageHeader title="ログイン" back={requireLogin ? undefined : true} />
       <div className="space-y-4 px-4 pt-4">
         <div className="text-center">
-          <div className="text-4xl">☁️</div>
-          <p className="mt-2 text-sm text-muted">ログインすると記録がクラウドに保存され、別の端末からも参照できます。</p>
+          <div className="text-4xl">{requireLogin ? "💪" : "☁️"}</div>
+          <p className="mt-2 text-sm text-muted">
+            {requireLogin
+              ? "このアプリは登録済みのアカウントでのみ利用できます。"
+              : "ログインすると記録がクラウドに保存され、別の端末からも参照できます。"}
+          </p>
         </div>
-        <Segmented
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "signin", label: "ログイン" },
-            { value: "signup", label: "新規登録" },
-          ]}
-        />
+        {!requireLogin && (
+          <Segmented
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "signin", label: "ログイン" },
+              { value: "signup", label: "新規登録" },
+            ]}
+          />
+        )}
         <Card>
           <div className="space-y-4">
             <Field label="メールアドレス">
@@ -167,6 +176,7 @@ export default function LoginPage() {
 function translate(msg: string) {
   if (/Invalid login credentials/i.test(msg)) return "メールアドレスまたはパスワードが正しくありません。";
   if (/already registered/i.test(msg)) return "このメールアドレスは既に登録されています。";
+  if (/signups? not allowed/i.test(msg)) return "このメールアドレスは登録されていません。";
   if (/Password should be/i.test(msg)) return "パスワードは6文字以上にしてください。";
   if (/rate limit/i.test(msg)) return "しばらく時間をおいてから再度お試しください。";
   return msg;

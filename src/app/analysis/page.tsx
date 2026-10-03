@@ -51,6 +51,7 @@ import { BodyMap } from "@/components/BodyMap";
 import { Badge, Button, Card, Empty, PageHeader, ProgressBar, Segmented, Stat, cx } from "@/components/ui";
 import { ChevronLeft, ChevronRight, SparkIcon } from "@/components/Icons";
 import { toast } from "@/lib/toast";
+import { apiFetch } from "@/lib/api";
 
 const tooltipStyle = {
   background: "#16161d",
@@ -414,7 +415,7 @@ function ReportSection({ month }: { month: string }) {
     const state = useApp.getState();
     let next: AIReport | null = null;
     try {
-      const res = await fetch("/api/ai/report", {
+      const res = await apiFetch("/api/ai/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildReportInput(state, month)),

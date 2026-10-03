@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { searchBuiltin, type FoodItem } from "@/lib/foods";
+import { apiFetch } from "@/lib/api";
 import { Button, Input } from "./ui";
 
 interface DetectedBarcode {
@@ -32,11 +33,12 @@ export function FoodPicker({ onPick, onClose }: { onPick: (f: FoodItem) => void;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/food?${params}`);
-      const json = (await res.json()) as { items: FoodItem[]; error?: string };
-      setRemote(json.items);
+      const res = await apiFetch(`/api/food?${params}`);
+      const json = (await res.json()) as { items?: FoodItem[]; error?: string };
+      const items = json.items ?? [];
+      setRemote(items);
       if (!res.ok) setError("食品データベースに接続できませんでした");
-      else if (json.items.length === 0) setError("見つかりませんでした。手入力してください");
+      else if (items.length === 0) setError("見つかりませんでした。手入力してください");
     } catch {
       setError("オフラインのため検索できません");
     } finally {

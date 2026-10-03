@@ -10,6 +10,7 @@ import { useApp } from "@/lib/store";
 import { useToast } from "@/lib/toast";
 import { useTimer } from "@/lib/timerStore";
 import { CloudSync } from "./CloudSync";
+import { requireLogin, useCloud } from "@/lib/supabase";
 import { PushBridge } from "./PushBridge";
 
 function Toaster() {
@@ -39,31 +40,47 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const onboarded = useApp((s) => s.settings.onboarded);
+  const user = useCloud((s) => s.user);
+  const cloudReady = useCloud((s) => s.ready);
+  const locked = requireLogin && !user;
   const allowedBeforeOnboarding = pathname === "/onboarding" || pathname === "/login";
-  const isOnboarding = pathname === "/onboarding" || (pathname === "/login" && !onboarded);
+  const isOnboarding = pathname === "/onboarding" || (pathname === "/login" && (!onboarded || locked));
   const timerVisible = useTimer((s) => s.status !== "idle") && pathname !== "/timer";
 
-  useEffect(() => {
-    if (mounted && !onboarded && !allowedBeforeOnboarding) router.replace("/onboarding");
-  }, [mounted, onboarded, allowedBeforeOnboarding, router]);
+  const waiting = requireLogin && !cloudReady;
+  const redirect = locked
+    ? pathname === "/login"
+      ? null
+      : "/login"
+    : !onboarded && !allowedBeforeOnboarding
+      ? "/onboarding"
+      : null;
 
-  if (!mounted || (!onboarded && !allowedBeforeOnboarding)) {
+  useEffect(() => {
+    if (mounted && !waiting && redirect) router.replace(redirect);
+  }, [mounted, waiting, redirect, router]);
+
+  if (!mounted || waiting || redirect) {
     return (
-      <div className="grid min-h-dvh place-items-center">
-        <div className="text-center">
-          <div className="text-5xl animate-pulse">💪</div>
-          <div className="mt-3 text-sm font-bold text-muted">読み込み中...</div>
+      <>
+        {/* CloudSync がログイン状態を確定させるので、読み込み中もマウントしておく */}
+        <CloudSync />
+        <div className="grid min-h-dvh place-items-center">
+          <div className="text-center">
+            <div className="text-5xl animate-pulse">💪</div>
+            <div className="mt-3 text-sm font-bold text-muted">読み込み中...</div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
     <>
+      <CloudSync />
       <TimerWatcher />
       <NotificationWatcher />
       <ServiceWorkerRegister />
-      <CloudSync />
       <PushBridge />
       <main
         className={

@@ -6,6 +6,7 @@ import { useApp, type AppData } from "./store";
 import { addDays, monthOf, ymd } from "./date";
 import { getSupabase } from "./supabase";
 import { requestNotificationPermission } from "./notify";
+import { apiFetch } from "./api";
 
 interface PushState {
   enabled: boolean;
@@ -88,7 +89,7 @@ async function accessToken() {
 }
 
 async function postSubscription(sub: PushSubscription) {
-  const res = await fetch("/api/push/subscribe", {
+  const res = await apiFetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -137,7 +138,7 @@ export async function disablePush() {
     /* noop */
   }
   if (endpoint) {
-    await fetch("/api/push/unsubscribe", {
+    await apiFetch("/api/push/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ endpoint }),
@@ -165,7 +166,7 @@ export async function refreshSubscription() {
 export async function scheduleTimerPush(at: number, label: string) {
   const { enabled, endpoint } = usePush.getState();
   if (!enabled || !endpoint) return;
-  await fetch("/api/push/schedule", {
+  await apiFetch("/api/push/schedule", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -182,7 +183,7 @@ export async function scheduleTimerPush(at: number, label: string) {
 export async function cancelTimerPush() {
   const { enabled, endpoint } = usePush.getState();
   if (!enabled || !endpoint) return;
-  await fetch("/api/push/schedule", {
+  await apiFetch("/api/push/schedule", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint, tag: "interval" }),
@@ -192,7 +193,7 @@ export async function cancelTimerPush() {
 export async function testPush() {
   const { endpoint } = usePush.getState();
   if (!endpoint) return false;
-  const res = await fetch("/api/push/test", {
+  const res = await apiFetch("/api/push/test", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint }),

@@ -520,17 +520,18 @@ function ExerciseCard({
         ))}
       </ul>
 
-      <div className="mt-3 flex items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={() => data.addSet(sessionId, ex.uid)}>
-          <PlusIcon size={14} /> セット追加
+      <div className="mt-3 flex items-center gap-1">
+        <Button variant="secondary" size="sm" aria-label="セット追加" onClick={() => data.addSet(sessionId, ex.uid)}>
+          <PlusIcon size={14} /> セット
         </Button>
         {ex.sets.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
+            aria-label="1セット削除"
             onClick={() => data.removeSet(sessionId, ex.uid, ex.sets.length - 1)}
           >
-            1セット削除
+            − セット
           </Button>
         )}
         <div className="ml-auto flex gap-1">

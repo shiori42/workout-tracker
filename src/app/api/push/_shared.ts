@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { pushConfigured, startPushScheduler } from "@/lib/server/push";
+import { requireUser } from "@/lib/server/auth";
 
 export const json = (data: unknown, status = 200) => NextResponse.json(data, { status });
 
@@ -12,9 +13,11 @@ export async function readJson<T>(req: Request): Promise<T | null> {
   }
 }
 
-/** API 利用時にスケジューラが動いていることを保証する */
-export function ensurePush() {
+/** 利用者を確認し、API 利用時にスケジューラが動いていることを保証する */
+export async function ensurePush(req: Request) {
   if (!pushConfigured) return json({ error: "push_not_configured" }, 503);
+  const denied = await requireUser(req);
+  if (denied) return denied;
   startPushScheduler();
   return null;
 }

@@ -17,7 +17,7 @@ async function userIdFromToken(token?: string | null) {
 }
 
 export async function POST(req: Request) {
-  const blocked = ensurePush();
+  const blocked = await ensurePush(req);
   if (blocked) return blocked;
   const body = await readJson<Body>(req);
   const sub = body?.subscription;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ReportInput } from "@/lib/calc";
+import { requireUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,6 +27,8 @@ export function GET() {
 
 export async function POST(req: Request) {
   if (!apiKey()) return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  const denied = await requireUser(req);
+  if (denied) return denied;
 
   let input: ReportInput;
   try {
