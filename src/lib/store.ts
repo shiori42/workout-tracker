@@ -533,7 +533,12 @@ export const useApp = create<AppState>()(
         },
         replaceWithSamples: () => {
           const st = get();
-          const { exercises, keyToId } = buildSampleExercises(st.exercises, true);
+          const { exercises: standard, keyToId } = buildSampleExercises(st.exercises, true);
+          const standardIds = new Set(standard.map((e) => e.id));
+          const exercises = [
+            ...standard,
+            ...st.exercises.filter((e) => !standardIds.has(e.id)),
+          ];
           const templates: Template[] = SAMPLE_TEMPLATES.map((t) => ({
             id: st.templates.find((x) => x.name === t.name)?.id ?? uid(),
             name: t.name,

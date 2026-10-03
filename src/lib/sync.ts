@@ -5,6 +5,7 @@ import type {
   AIReport,
   BodyRecord,
   Exercise,
+  ExerciseGuide,
   ExtraBurn,
   MealRecord,
   NotificationSettings,
@@ -68,6 +69,7 @@ export function toRows(data: AppData, timerSeconds: { user: number; last: number
       default_rest_sec: e.restSec,
       intensity: e.intensity,
       memo: e.memo,
+      guide: e.guide ?? null,
       created_at: iso(e.createdAt) ?? new Date(0).toISOString(),
     });
     for (const [muscle, rate] of Object.entries(e.muscles && Object.keys(e.muscles).length > 0 ? e.muscles : MUSCLE_MAP[e.bodyPart])) {
@@ -243,6 +245,7 @@ export function fromRows(
     restSec: Number(r.default_rest_sec),
     intensity: r.intensity as Exercise["intensity"],
     memo: String(r.memo ?? ""),
+    ...(r.guide ? { guide: r.guide as ExerciseGuide } : {}),
     createdAt: ms(r.created_at) ?? 0,
   }));
   exercises.sort((a, b) => a.createdAt - b.createdAt);

@@ -50,7 +50,17 @@ export interface Exercise {
   memo: string;
   /** 対象筋と寄与率。未指定なら部位の既定値（MUSCLE_MAP）を使う */
   muscles?: Partial<Record<Muscle, number>>;
+  /** ユーザーが書いたフォーム解説。未指定なら標準の解説（種目名で検索）を使う */
+  guide?: ExerciseGuide;
   createdAt: number;
+}
+
+export interface ExerciseGuide {
+  setup: string;
+  movement: string;
+  tips: string;
+  mistakes: string[];
+  caution: string;
 }
 
 export interface Template {

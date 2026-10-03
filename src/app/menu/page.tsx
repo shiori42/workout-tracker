@@ -12,8 +12,25 @@ import {
   YAxis,
 } from "recharts";
 import { useApp, type ExerciseInput } from "@/lib/store";
-import type { BodyPart, Equipment, Exercise, Intensity, Template, WeightMode } from "@/lib/types";
-import { BODY_PARTS, EQUIPMENT, INTENSITY, TIMER_PRESETS, WEIGHT_MODES } from "@/lib/constants";
+import type {
+  BodyPart,
+  Equipment,
+  Exercise,
+  ExerciseGuide,
+  Intensity,
+  Muscle,
+  Template,
+  WeightMode,
+} from "@/lib/types";
+import {
+  BODY_PARTS,
+  EQUIPMENT,
+  INTENSITY,
+  MUSCLE_MAP,
+  MUSCLES,
+  TIMER_PRESETS,
+  WEIGHT_MODES,
+} from "@/lib/constants";
 import { fmtDate, WEEKDAYS } from "@/lib/date";
 import { estimate1RM, personalRecord, setVolume } from "@/lib/calc";
 import { toast } from "@/lib/toast";
@@ -32,7 +49,14 @@ import {
   TextArea,
   cx,
 } from "@/components/ui";
-import { FormGuideSheet, formGuideFor } from "@/components/FormGuide";
+import {
+  FormGuideSheet,
+  MAIN_RATE,
+  formGuideFor,
+  guideFor,
+  hasGuideContent,
+  musclesLabel,
+} from "@/components/FormGuide";
 import {
   BookIcon,
   CopyIcon,
@@ -101,7 +125,7 @@ function ExercisesTab() {
   const data = useApp();
   const [editing, setEditing] = useState<{ id?: string; value: ExerciseInput } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const [guideName, setGuideName] = useState<string | null>(null);
+  const [guideEx, setGuideEx] = useState<Exercise | null>(null);
   const [filter, setFilter] = useState<BodyPart | "all">("all");
   const [confirmDelete, setConfirmDelete] = useState<Exercise | null>(null);
 
@@ -158,12 +182,13 @@ function ExercisesTab() {
                   {e.defaultWeight > 0 ? `${e.defaultWeight}kg（${WEIGHT_MODES[e.weightMode]}）× ` : ""}
                   {e.defaultReps}回 × {e.defaultSets}セット ・ 休憩{e.restSec}秒
                 </div>
+                {!formGuideFor(e.name) && <MusclesLine exercise={e} />}
                 {e.memo && <div className="mt-1 text-[11px] text-white/60">📝 {e.memo}</div>}
               </div>
             </div>
             <div className="mt-2 flex justify-end gap-1 border-t border-line/50 pt-2">
-              {formGuideFor(e.name) && (
-                <IconBtn label="フォーム" onClick={() => setGuideName(e.name)}>
+              {guideFor(e) && (
+                <IconBtn label="フォーム" onClick={() => setGuideEx(e)}>
                   <BookIcon size={16} />
                 </IconBtn>
               )}
@@ -206,7 +231,7 @@ function ExercisesTab() {
       )}
 
       <ExerciseHistory id={historyId} onClose={() => setHistoryId(null)} />
-      <FormGuideSheet name={guideName} onClose={() => setGuideName(null)} />
+      <FormGuideSheet exercise={guideEx} onClose={() => setGuideEx(null)} />
 
       <Sheet
         open={!!confirmDelete}
@@ -237,6 +262,19 @@ function ExercisesTab() {
   );
 }
 
+function MusclesLine({ exercise }: { exercise: Exercise }) {
+  const muscles = exercise.muscles && Object.keys(exercise.muscles).length > 0 ? exercise.muscles : MUSCLE_MAP[exercise.bodyPart];
+  const main = musclesLabel(muscles, true);
+  const sub = musclesLabel(muscles, false);
+  if (!main && !sub) return null;
+  return (
+    <div className="mt-1 text-[11px] text-white/60">
+      🎯 主に効く：{main || "-"}
+      {sub && <span className="text-muted">（補助：{sub}）</span>}
+    </div>
+  );
+}
+
 function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -262,8 +300,48 @@ function ExerciseForm({
   onSave: (v: ExerciseInput) => void;
 }) {
   const [v, setV] = useState<ExerciseInput>(initial);
+  const [musclesTouched, setMusclesTouched] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(() => hasGuideContent(initial.guide));
+  const [guide, setGuide] = useState(() => ({
+    setup: initial.guide?.setup ?? "",
+    movement: initial.guide?.movement ?? "",
+    tips: initial.guide?.tips ?? "",
+    mistakes: initial.guide?.mistakes.join("\n") ?? "",
+    caution: initial.guide?.caution ?? "",
+  }));
   const up = (patch: Partial<ExerciseInput>) => setV((x) => ({ ...x, ...patch }));
+  const upGuide = (patch: Partial<typeof guide>) => setGuide((g) => ({ ...g, ...patch }));
   const noWeight = v.equipment === "bodyweight" || v.equipment === "abroller" || v.equipment === "handgrip";
+  const muscles = v.muscles ?? MUSCLE_MAP[v.bodyPart];
+  const stdGuide = formGuideFor(v.name);
+  const guideValue: ExerciseGuide = {
+    setup: guide.setup.trim(),
+    movement: guide.movement.trim(),
+    tips: guide.tips.trim(),
+    mistakes: guide.mistakes.split("\n").map((s) => s.trim()).filter(Boolean),
+    caution: guide.caution.trim(),
+  };
+  const hasMain = Object.values(muscles).some((r) => (r ?? 0) >= MAIN_RATE);
+
+  const cycleMuscle = (m: Muscle) => {
+    const r = muscles[m] ?? 0;
+    const next = { ...muscles };
+    if (r <= 0) next[m] = 1;
+    else if (r >= MAIN_RATE) next[m] = 0.4;
+    else delete next[m];
+    setMusclesTouched(true);
+    up({ muscles: next });
+  };
+
+  const save = () => {
+    const { guide: _old, ...rest } = v;
+    void _old;
+    onSave({
+      ...rest,
+      name: v.name.trim(),
+      ...(hasGuideContent(guideValue) ? { guide: guideValue } : { guide: undefined }),
+    });
+  };
 
   return (
     <Sheet
@@ -271,7 +349,7 @@ function ExerciseForm({
       onClose={onClose}
       title={isNew ? "種目を追加" : "種目を編集"}
       footer={
-        <Button size="lg" className="w-full" disabled={!v.name.trim()} onClick={() => onSave({ ...v, name: v.name.trim() })}>
+        <Button size="lg" className="w-full" disabled={!v.name.trim() || !hasMain} onClick={save}>
           保存
         </Button>
       }
@@ -284,7 +362,7 @@ function ExerciseForm({
           <Field label="対象部位">
             <Select
               value={v.bodyPart}
-              onChange={(x) => up({ bodyPart: x as BodyPart })}
+              onChange={(x) => up({ bodyPart: x as BodyPart, ...(musclesTouched ? {} : { muscles: undefined }) })}
               options={Object.entries(BODY_PARTS).map(([value, label]) => ({ value: value as BodyPart, label }))}
             />
           </Field>
@@ -302,6 +380,40 @@ function ExerciseForm({
               options={Object.entries(EQUIPMENT).map(([value, label]) => ({ value: value as Equipment, label }))}
             />
           </Field>
+        </div>
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="text-xs font-bold text-muted">効く筋肉</span>
+            <span className="text-[10px] text-muted">タップで メイン → サブ → なし</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(MUSCLES) as Muscle[]).map((m) => {
+              const r = muscles[m] ?? 0;
+              const level = r >= MAIN_RATE ? "main" : r > 0 ? "sub" : "none";
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => cycleMuscle(m)}
+                  aria-pressed={level !== "none"}
+                  className={cx(
+                    "h-8 rounded-full px-3 text-xs font-bold transition active:scale-95",
+                    level === "main" && "bg-accent text-white",
+                    level === "sub" && "border border-accent/60 bg-accent/15 text-accent",
+                    level === "none" && "bg-card2 text-muted",
+                  )}
+                >
+                  {MUSCLES[m]}
+                  {level === "main" ? "・メイン" : level === "sub" ? "・サブ" : ""}
+                </button>
+              );
+            })}
+          </div>
+          {hasMain ? (
+            <p className="mt-1.5 text-[10px] text-muted">分析の筋肉疲労度に反映されます</p>
+          ) : (
+            <p className="mt-1.5 text-[11px] font-bold text-yellow-300">メインの筋肉を1つ以上選んでください</p>
+          )}
         </div>
         {!noWeight || v.defaultWeight > 0 ? (
           <Field label="重量の扱い">
@@ -353,6 +465,56 @@ function ExerciseForm({
         <Field label="メモ">
           <TextArea value={v.memo} onChange={(e) => up({ memo: e.target.value })} rows={2} placeholder="フォーム、注意点、次回目標など" />
         </Field>
+        <div className="rounded-xl bg-card2 p-3">
+          <button
+            type="button"
+            onClick={() => setGuideOpen((o) => !o)}
+            className="flex w-full items-center justify-between text-xs font-bold text-muted"
+            aria-expanded={guideOpen}
+          >
+            フォーム解説（任意）
+            {guideOpen ? <UpIcon size={16} /> : <DownIcon size={16} />}
+          </button>
+          {guideOpen && (
+          <div className="mt-3 space-y-3">
+            {stdGuide && !hasGuideContent(guideValue) && (
+              <div className="flex items-center gap-2 rounded-lg bg-card p-2.5 text-[11px] text-muted">
+                <span className="flex-1">空欄のままなら標準の解説を表示します</span>
+                <button
+                  type="button"
+                  className="shrink-0 font-bold text-accent"
+                  onClick={() =>
+                    setGuide({
+                      setup: stdGuide.setup,
+                      movement: stdGuide.movement,
+                      tips: stdGuide.tips,
+                      mistakes: stdGuide.mistakes.join("\n"),
+                      caution: stdGuide.caution,
+                    })
+                  }
+                >
+                  標準をコピーして編集
+                </button>
+              </div>
+            )}
+            <Field label="開始姿勢">
+              <TextArea value={guide.setup} onChange={(e) => upGuide({ setup: e.target.value })} rows={2} placeholder="例：床に仰向け。膝を曲げる。" />
+            </Field>
+            <Field label="動作">
+              <TextArea value={guide.movement} onChange={(e) => upGuide({ movement: e.target.value })} rows={2} placeholder="例：肘を曲げて下ろし、押し上げる。" />
+            </Field>
+            <Field label="フォームのポイント">
+              <TextArea value={guide.tips} onChange={(e) => upGuide({ tips: e.target.value })} rows={2} placeholder="例：肩甲骨を寄せて胸を張る。" />
+            </Field>
+            <Field label="よくあるミス（1行に1つ）">
+              <TextArea value={guide.mistakes} onChange={(e) => upGuide({ mistakes: e.target.value })} rows={3} placeholder={"例：腰を反る\n反動を使う"} />
+            </Field>
+            <Field label="注意点">
+              <TextArea value={guide.caution} onChange={(e) => upGuide({ caution: e.target.value })} rows={2} placeholder="例：肩に痛みが出たら中止。" />
+            </Field>
+          </div>
+          )}
+        </div>
       </div>
     </Sheet>
   );

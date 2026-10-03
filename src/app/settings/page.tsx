@@ -256,7 +256,7 @@ export default function SettingsPage() {
       >
         <p className="text-sm leading-relaxed text-muted">
           種目・テンプレート・曜日スケジュールを標準セットに置き換えます（
-          {SAMPLE_TEMPLATES.map((t) => t.name).join("／")}）。同じ名前の種目は記録の履歴を引き継ぎます。トレーニング記録・食事・身体記録は消えません。
+          {SAMPLE_TEMPLATES.map((t) => t.name).join("／")}）。同じ名前の種目は記録の履歴を引き継ぎ、自分で追加した種目はそのまま残ります。トレーニング記録・食事・身体記録は消えません。
         </p>
       </Sheet>
 
