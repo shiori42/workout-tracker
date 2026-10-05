@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useMounted } from "./hooks";
+import { useKeyboardOpen, useMounted } from "./hooks";
 import { TabBar } from "./TabBar";
 import { MiniTimer, TimerAlert } from "./TimerWidgets";
 import { NotificationWatcher, ServiceWorkerRegister, TimerWatcher } from "./Watchers";
@@ -46,6 +46,7 @@ function Toaster() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const mounted = useMounted();
+  const keyboardOpen = useKeyboardOpen();
   const pathname = usePathname();
   const router = useRouter();
   const onboarded = useApp((s) => s.settings.onboarded);
@@ -72,20 +73,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     scrollAppToTop();
   }, [pathname]);
-
-  useEffect(() => {
-    // iOS はキーボードを閉じた後もページ全体がずれたまま残ることがあるので戻す
-    const onFocusOut = () => {
-      setTimeout(() => {
-        const el = document.activeElement;
-        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) {
-          window.scrollTo(0, 0);
-        }
-      }, 50);
-    };
-    document.addEventListener("focusout", onFocusOut);
-    return () => document.removeEventListener("focusout", onFocusOut);
-  }, []);
 
   if (!mounted || waiting || redirect) {
     return (
@@ -122,8 +109,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
-      {!isOnboarding && <MiniTimer />}
-      {!isOnboarding && <TabBar />}
+      {!isOnboarding && !keyboardOpen && <MiniTimer />}
+      {!isOnboarding && !keyboardOpen && <TabBar />}
       <TimerAlert />
       <Toaster />
     </>
