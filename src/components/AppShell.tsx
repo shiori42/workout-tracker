@@ -12,6 +12,15 @@ import { useTimer } from "@/lib/timerStore";
 import { CloudSync } from "./CloudSync";
 import { requireLogin, useCloud } from "@/lib/supabase";
 import { PushBridge } from "./PushBridge";
+import { cx } from "./ui";
+
+const SCROLL_ID = "app-scroll";
+
+/** スクロールはページ全体ではなく main 要素で行う（iOS で固定タブバーがずれるのを防ぐ） */
+export function scrollAppToTop() {
+  document.getElementById(SCROLL_ID)?.scrollTo({ top: 0 });
+  window.scrollTo(0, 0);
+}
 
 function Toaster() {
   const toasts = useToast((s) => s.toasts);
@@ -60,6 +69,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (mounted && !waiting && redirect) router.replace(redirect);
   }, [mounted, waiting, redirect, router]);
 
+  useEffect(() => {
+    scrollAppToTop();
+  }, [pathname]);
+
+  useEffect(() => {
+    // iOS はキーボードを閉じた後もページ全体がずれたまま残ることがあるので戻す
+    const onFocusOut = () => {
+      setTimeout(() => {
+        const el = document.activeElement;
+        if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) {
+          window.scrollTo(0, 0);
+        }
+      }, 50);
+    };
+    document.addEventListener("focusout", onFocusOut);
+    return () => document.removeEventListener("focusout", onFocusOut);
+  }, []);
+
   if (!mounted || waiting || redirect) {
     return (
       <>
@@ -83,13 +110,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ServiceWorkerRegister />
       <PushBridge />
       <main
-        className={
+        id={SCROLL_ID}
+        className={cx(
+          "h-dvh overflow-y-auto overscroll-y-contain",
           isOnboarding
             ? ""
             : timerVisible
               ? "pb-[calc(160px+env(safe-area-inset-bottom))]"
-              : "pb-[calc(88px+env(safe-area-inset-bottom))]"
-        }
+              : "pb-[calc(88px+env(safe-area-inset-bottom))]",
+        )}
       >
         {children}
       </main>

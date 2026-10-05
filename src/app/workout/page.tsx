@@ -35,6 +35,7 @@ import {
   cx,
 } from "@/components/ui";
 import { FormGuideSheet, guideFor } from "@/components/FormGuide";
+import { scrollAppToTop } from "@/components/AppShell";
 import {
   CheckIcon,
   DownIcon,
@@ -67,7 +68,7 @@ function StartView() {
 
   const start = (templateId: string | null) => {
     data.startSession(templateId, today);
-    window.scrollTo({ top: 0 });
+    scrollAppToTop();
   };
 
   const exName = (id: string) => data.exercises.find((e) => e.id === id);

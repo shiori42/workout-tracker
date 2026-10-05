@@ -28,9 +28,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full">
-        <div className="relative mx-auto min-h-dvh w-full max-w-[430px] bg-bg shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+    <html lang="ja" className="h-full overflow-hidden antialiased">
+      <body className="h-full overflow-hidden">
+        <div className="relative mx-auto h-dvh w-full max-w-[430px] bg-bg shadow-[0_0_60px_rgba(0,0,0,0.6)]">
           <AppShell>{children}</AppShell>
         </div>
       </body>
