@@ -18,6 +18,8 @@ export type Equipment =
   | "other";
 
 export type WeightMode = "total" | "per_hand" | "left_right";
+/** セットの数値欄の単位（回数 or 秒数） */
+export type RepUnit = "reps" | "sec";
 export type Intensity = "light" | "moderate" | "high";
 
 export type Muscle =
@@ -42,6 +44,8 @@ export interface Exercise {
   bodyPart: BodyPart;
   equipment: Equipment;
   weightMode: WeightMode;
+  /** 未指定なら回数（標準の秒数種目は名前で判定） */
+  repUnit?: RepUnit;
   defaultWeight: number;
   defaultReps: number;
   defaultSets: number;
@@ -86,6 +90,7 @@ export interface SessionExercise {
   bodyPart: BodyPart;
   equipment: Equipment;
   weightMode: WeightMode;
+  repUnit?: RepUnit;
   intensity: Intensity;
   restSec: number;
   sets: WorkoutSet[];

@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       exercise: String(p.exercise).slice(0, 40),
       previousBest: Number(p.previousBest) || 0,
       currentBest: Number(p.currentBest) || 0,
-      unit: p.unit === "kg" ? "kg" : "回",
+      unit: p.unit === "kg" || p.unit === "秒" ? p.unit : "回",
     })),
   };
 

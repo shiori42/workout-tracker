@@ -17,7 +17,7 @@ import type {
   WorkoutSet,
 } from "./types";
 import { ymd } from "./date";
-import { SAMPLE_EXERCISES, SAMPLE_TEMPLATES, SAMPLE_WEEKDAYS } from "./constants";
+import { SAMPLE_EXERCISES, SAMPLE_TEMPLATES, SAMPLE_WEEKDAYS, repUnitOf } from "./constants";
 
 export const uid = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -168,6 +168,7 @@ function buildSampleExercises(current: Exercise[], overwrite = false) {
       bodyPart: s.bodyPart,
       equipment: s.equipment,
       weightMode: s.weightMode,
+      repUnit: s.repUnit,
       defaultWeight: s.defaultWeight,
       defaultReps: s.defaultReps,
       defaultSets: s.defaultSets,
@@ -218,6 +219,7 @@ function toSessionExercise(
     bodyPart: ex.bodyPart,
     equipment: ex.equipment,
     weightMode: ex.weightMode,
+    repUnit: repUnitOf(ex),
     intensity: ex.intensity,
     restSec: ex.restSec,
     sets: initialSetsFor(sessions, ex),

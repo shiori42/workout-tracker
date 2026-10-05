@@ -8,7 +8,8 @@ import { useApp } from "@/lib/store";
 import { fmtDateTime } from "@/lib/date";
 import { disablePush, enablePush, pushConfig, pushSupported, testPush, usePush } from "@/lib/push";
 import { toast } from "@/lib/toast";
-import { Button, Card, LinkButton, Sheet, Toggle } from "./ui";
+import { Button, Card, LinkButton, Sheet, Toggle, cx } from "./ui";
+import { isIos, isStandalone } from "./InstallHint";
 
 const STATUS_LABEL = {
   disabled: "クラウド未設定",
@@ -125,9 +126,22 @@ export function PushSection() {
   }, []);
 
   if (available === false) {
+    const needsInstall = isIos() && !isStandalone();
     return (
-      <p className="mb-3 rounded-xl bg-card2 px-3 py-2.5 text-[11px] leading-relaxed text-muted">
-        プッシュ通知サーバーが未設定、またはこのブラウザが非対応のため、アプリを開いている間の通知のみ動作します。
+      <p
+        className={cx(
+          "mb-3 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed",
+          needsInstall ? "border border-accent/30 bg-accent/10 text-white/90" : "bg-card2 text-muted",
+        )}
+      >
+        {needsInstall ? (
+          <>
+            <span className="block font-bold">📲 iPhoneはホーム画面に追加すると通知が届きます</span>
+            Safari の共有ボタン（□↑）→「ホーム画面に追加」→ ホーム画面のアイコンから開き、ここで「プッシュ通知」をオンにしてください。今のままだとアプリを開いている間しか通知されません。
+          </>
+        ) : (
+          "プッシュ通知サーバーが未設定、またはこのブラウザが非対応のため、アプリを開いている間の通知のみ動作します。"
+        )}
       </p>
     );
   }

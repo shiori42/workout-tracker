@@ -19,6 +19,7 @@ import type {
   ExerciseGuide,
   Intensity,
   Muscle,
+  RepUnit,
   Template,
   WeightMode,
 } from "@/lib/types";
@@ -28,11 +29,14 @@ import {
   INTENSITY,
   MUSCLE_MAP,
   MUSCLES,
+  REP_UNITS,
   TIMER_PRESETS,
   WEIGHT_MODES,
+  isTimed,
+  repUnitOf,
 } from "@/lib/constants";
 import { fmtDate, WEEKDAYS } from "@/lib/date";
-import { estimate1RM, personalRecord, setVolume } from "@/lib/calc";
+import { estimate1RM, fmtSet, personalRecord, setVolume } from "@/lib/calc";
 import { toast } from "@/lib/toast";
 import {
   Badge,
@@ -180,7 +184,7 @@ function ExercisesTab() {
                 </div>
                 <div className="mt-1.5 text-xs text-muted tabular-nums">
                   {e.defaultWeight > 0 ? `${e.defaultWeight}kg（${WEIGHT_MODES[e.weightMode]}）× ` : ""}
-                  {e.defaultReps}回 × {e.defaultSets}セット ・ 休憩{e.restSec}秒
+                  {`${e.defaultReps}${REP_UNITS[repUnitOf(e)]}`} × {e.defaultSets}セット ・ 休憩{e.restSec}秒
                 </div>
                 {!formGuideFor(e.name) && <MusclesLine exercise={e} />}
                 {e.memo && <div className="mt-1 text-[11px] text-white/60">📝 {e.memo}</div>}
@@ -339,6 +343,7 @@ function ExerciseForm({
     onSave({
       ...rest,
       name: v.name.trim(),
+      repUnit: repUnitOf(v),
       ...(hasGuideContent(guideValue) ? { guide: guideValue } : { guide: undefined }),
     });
   };
@@ -424,11 +429,21 @@ function ExerciseForm({
             />
           </Field>
         ) : null}
+        <Field label="記録の単位">
+          <Segmented
+            value={repUnitOf(v)}
+            onChange={(x) => up({ repUnit: x as RepUnit })}
+            options={[
+              { value: "reps" as RepUnit, label: "回数（例：腕立て）" },
+              { value: "sec" as RepUnit, label: "秒数（例：プランク）" },
+            ]}
+          />
+        </Field>
         <div className="grid grid-cols-3 gap-3">
           <Field label="重量(kg)">
             <NumberInput value={v.defaultWeight} step={0.5} onChange={(x) => up({ defaultWeight: x })} className="text-center" />
           </Field>
-          <Field label="回数">
+          <Field label={isTimed(v) ? "秒数" : "回数"}>
             <NumberInput value={v.defaultReps} onChange={(x) => up({ defaultReps: Math.round(x) })} className="text-center" />
           </Field>
           <Field label="セット数">
@@ -537,14 +552,17 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
             maxWeight: Math.max(...done.map((x) => x.weight)),
             e1rm: Math.max(...done.map((x) => estimate1RM(x.weight, x.reps))),
             reps: done.reduce((a, x) => a + x.reps, 0),
+            best: Math.max(...done.map((x) => x.reps)),
             sets: done.length,
             volume: Math.round(done.reduce((a, x) => a + setVolume(e, x), 0)),
-            detail: done.map((x) => (x.weight > 0 ? `${x.weight}×${x.reps}` : `${x.reps}回`)).join(" / "),
+            detail: done.map((x) => fmtSet(e, x)).join(" / "),
             memo: e.memo,
           };
         }),
     );
-  const hasWeight = rows.some((r) => r.maxWeight > 0);
+  const timed = !!ex && isTimed(ex);
+  const unit = timed ? "秒" : "回";
+  const hasWeight = !timed && rows.some((r) => r.maxWeight > 0);
   const pr = id ? personalRecord(data.sessions, id) : null;
 
   return (
@@ -563,9 +581,9 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
                 </>
               ) : (
                 <>
-                  <PrStat label="最高回数" value={pr.bestReps} unit="回" />
+                  <PrStat label={timed ? "最長" : "最高回数"} value={pr.bestReps} unit={unit} />
                   <PrStat label="記録回数" value={rows.length} unit="回" />
-                  <PrStat label="累計回数" value={rows.reduce((a, r) => a + r.reps, 0)} unit="回" />
+                  <PrStat label={timed ? "累計秒数" : "累計回数"} value={rows.reduce((a, r) => a + r.reps, 0)} unit={unit} />
                 </>
               )}
             </div>
@@ -582,6 +600,8 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
                     <Line type="monotone" dataKey="maxWeight" name="最大重量(kg)" stroke="#ff6b2c" strokeWidth={2} dot />
                     <Line type="monotone" dataKey="e1rm" name="推定1RM(kg)" stroke="#fbbf24" strokeWidth={2} strokeDasharray="4 3" dot={false} />
                   </>
+                ) : timed ? (
+                  <Line type="monotone" dataKey="best" name="最長(秒)" stroke="#ff6b2c" strokeWidth={2} dot />
                 ) : (
                   <Line type="monotone" dataKey="reps" name="総回数" stroke="#ff6b2c" strokeWidth={2} dot />
                 )}
@@ -595,7 +615,8 @@ function ExerciseHistory({ id, onClose }: { id: string | null; onClose: () => vo
                 <div className="flex justify-between text-sm">
                   <span className="font-bold">{r.label}</span>
                   <span className="text-xs text-muted">
-                    {r.sets}セット・{r.reps}回{r.volume > 0 ? `・${r.volume}kg` : ""}
+                    {r.sets}セット・{`${r.reps}${unit}`}
+                    {r.volume > 0 ? `・${r.volume}kg` : ""}
                   </span>
                 </div>
                 <div className="mt-0.5 text-xs text-muted tabular-nums">{r.detail}</div>

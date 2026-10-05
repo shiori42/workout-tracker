@@ -17,7 +17,10 @@ import {
   METS,
   MUSCLES,
   MUSCLE_MAP,
+  REP_UNITS,
   SEC_PER_REP,
+  isTimed,
+  repUnitOf,
 } from "./constants";
 import {
   addDays,
@@ -72,16 +75,17 @@ export function effectiveIntensity(ex: SessionExercise): Intensity {
   if (sets.length === 0) return ex.intensity;
   const avgReps = sets.reduce((a, s) => a + s.reps, 0) / sets.length;
   const avgWeight = sets.reduce((a, s) => a + s.weight, 0) / sets.length;
-  if (avgWeight > 0 && avgReps <= 6) return bumpIntensity(ex.intensity);
+  if (avgWeight > 0 && avgReps <= 6 && !isTimed(ex)) return bumpIntensity(ex.intensity);
   if (sets.length >= 5 && ex.restSec <= 45) return bumpIntensity(ex.intensity);
   return ex.intensity;
 }
 
-/** 回数×標準動作秒数＋インターバルからの推定時間（分） */
+/** 回数×標準動作秒数（秒数種目はその秒数）＋インターバルからの推定時間（分） */
 export function estimateExerciseMinutes(ex: SessionExercise) {
   const sets = doneSets(ex);
   if (sets.length === 0) return 0;
-  const work = sets.reduce((a, s) => a + s.reps * SEC_PER_REP, 0);
+  const perRep = isTimed(ex) ? 1 : SEC_PER_REP;
+  const work = sets.reduce((a, s) => a + s.reps * perRep, 0);
   const rest = Math.max(0, sets.length - 1) * ex.restSec;
   return (work + rest) / 60;
 }
@@ -127,6 +131,7 @@ export const sessionTotals = (s: WorkoutSession) => {
   let sets = 0;
   let plannedSets = 0;
   let reps = 0;
+  let seconds = 0;
   let volume = 0;
   let doneExercises = 0;
   for (const e of s.exercises) {
@@ -134,16 +139,25 @@ export const sessionTotals = (s: WorkoutSession) => {
     const d = doneSets(e);
     if (e.sets.length > 0 && d.length === e.sets.length) doneExercises++;
     sets += d.length;
+    const timed = isTimed(e);
     for (const x of d) {
-      reps += x.reps;
+      if (timed) seconds += x.reps;
+      else reps += x.reps;
       volume += setVolume(e, x);
     }
   }
-  return { sets, plannedSets, reps, volume, doneExercises, exercises: s.exercises.length };
+  return { sets, plannedSets, reps, seconds, volume, doneExercises, exercises: s.exercises.length };
 };
 
+/** 総負荷（重量×回数）。秒数種目は回数がないので含めない */
 export const setVolume = (e: SessionExercise, x: WorkoutSet) =>
-  (e.weightMode === "total" ? x.weight : x.weight * 2) * x.reps;
+  isTimed(e) ? 0 : (e.weightMode === "total" ? x.weight : x.weight * 2) * x.reps;
+
+/** セットの表示（例：10kg×12回 / 30秒） */
+export const fmtSet = (e: Pick<SessionExercise, "repUnit" | "name">, x: Pick<WorkoutSet, "weight" | "reps">) => {
+  const unit = REP_UNITS[repUnitOf(e)];
+  return x.weight > 0 ? `${x.weight}kg×${x.reps}${unit}` : `${x.reps}${unit}`;
+};
 
 /** 日付の消費カロリー（トレーニング分 / 手動追加分） */
 export function dayBurn(data: AppData, date: string) {
@@ -324,7 +338,8 @@ const INTENSITY_MUL: Record<Intensity, number> = { light: 0.8, moderate: 1, high
 const DECAY_HOURS = 40;
 
 function setStimulus(e: SessionExercise, x: WorkoutSet) {
-  const repsFactor = Math.min(2, Math.max(0.3, x.reps / 10));
+  const repsEq = isTimed(e) ? x.reps / SEC_PER_REP : x.reps;
+  const repsFactor = Math.min(2, Math.max(0.3, repsEq / 10));
   const loadFactor =
     x.weight > 0
       ? Math.min(1.8, Math.max(0.8, 0.8 + x.weight / 25))
@@ -551,10 +566,11 @@ export function personalRecord(sessions: WorkoutSession[], exerciseId: string, e
     if (!s.completed || s.id === excludeSessionId) continue;
     for (const e of s.exercises) {
       if (e.exerciseId !== exerciseId) continue;
+      const timed = isTimed(e);
       let vol = 0;
       for (const x of e.sets) {
         if (!x.done) continue;
-        const rm = estimate1RM(x.weight, x.reps);
+        const rm = timed ? 0 : estimate1RM(x.weight, x.reps);
         if (rm > pr.best1RM) {
           pr.best1RM = rm;
           pr.best1RMDate = s.date;
@@ -570,7 +586,11 @@ export function personalRecord(sessions: WorkoutSession[], exerciseId: string, e
 }
 
 /** 前回の結果から次回の目標を提案する（ルールベース） */
-export function nextTarget(sessions: WorkoutSession[], ex: Pick<SessionExercise, "exerciseId" | "equipment">, excludeSessionId?: string) {
+export function nextTarget(
+  sessions: WorkoutSession[],
+  ex: Pick<SessionExercise, "exerciseId" | "equipment" | "repUnit" | "name">,
+  excludeSessionId?: string,
+) {
   const last = sessions
     .filter((s) => s.completed && s.id !== excludeSessionId && s.exercises.some((e) => e.exerciseId === ex.exerciseId && e.sets.some((x) => x.done)))
     .sort((a, b) => b.startAt - a.startAt)[0];
@@ -580,8 +600,13 @@ export function nextTarget(sessions: WorkoutSession[], ex: Pick<SessionExercise,
   const allDone = done.length === e.sets.length;
   const maxW = Math.max(...done.map((x) => x.weight));
   const minReps = Math.min(...done.map((x) => x.reps));
-  const prev = maxW > 0 ? `${maxW}kg×${minReps}回×${done.length}セット` : `${minReps}回×${done.length}セット`;
+  const prev = `${fmtSet(ex, { weight: maxW, reps: minReps })}×${done.length}セット`;
   if (!allDone) return { prev, text: "同じ条件で全セット完遂を目指しましょう", weight: maxW || undefined, reps: minReps };
+  if (isTimed(ex)) {
+    if (minReps >= 60) return { prev, text: "1セット追加、または負荷を上げて挑戦", weight: maxW || undefined, reps: minReps };
+    const next = minReps + 5;
+    return { prev, text: `各セット ${next}秒を目標に`, weight: maxW || undefined, reps: next };
+  }
   if (maxW > 0) {
     const inc = ex.equipment === "barbell" ? 2.5 : 1;
     if (minReps >= 12) return { prev, text: `${maxW + inc}kg に上げて ${Math.max(8, minReps - 4)}回を目標に`, weight: maxW + inc, reps: Math.max(8, minReps - 4) };
@@ -618,7 +643,7 @@ export interface ReportInput {
   streakDays: number;
   bestStreakDays: number;
   fatigueTop: { muscle: string; score: number }[];
-  progress: { exercise: string; previousBest: number; currentBest: number; unit: "kg" | "回" }[];
+  progress: { exercise: string; previousBest: number; currentBest: number; unit: "kg" | "回" | "秒" }[];
 }
 
 function summarize(data: AppData, month: string, today: string): ReportMonthSummary {
@@ -648,16 +673,17 @@ function summarize(data: AppData, month: string, today: string): ReportMonthSumm
 export function buildReportInput(data: AppData, month: string, today = ymd()): ReportInput {
   const prevMonth = addMonths(month, -1);
   const best = (m: string) => {
-    const map = new Map<string, { v: number; unit: "kg" | "回" }>();
+    const map = new Map<string, { v: number; unit: "kg" | "回" | "秒" }>();
     for (const s of data.sessions) {
       if (!s.completed || monthOf(s.date) !== m) continue;
       for (const e of s.exercises) {
+        const countUnit = REP_UNITS[repUnitOf(e)] as "回" | "秒";
         for (const x of e.sets) {
           if (!x.done) continue;
           const useWeight = x.weight > 0;
           const v = useWeight ? x.weight : x.reps;
           const cur = map.get(e.name);
-          if (!cur || v > cur.v) map.set(e.name, { v, unit: useWeight ? "kg" : "回" });
+          if (!cur || v > cur.v) map.set(e.name, { v, unit: useWeight ? "kg" : countUnit });
         }
       }
     }

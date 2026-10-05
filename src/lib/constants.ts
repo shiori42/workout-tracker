@@ -5,6 +5,7 @@ import type {
   MealType,
   Muscle,
   PhotoKind,
+  RepUnit,
   WeightMode,
 } from "./types";
 import { FORM_GUIDES } from "./formGuides";
@@ -34,6 +35,11 @@ export const WEIGHT_MODES: Record<WeightMode, string> = {
   total: "合計重量",
   per_hand: "片手重量",
   left_right: "左右別",
+};
+
+export const REP_UNITS: Record<RepUnit, string> = {
+  reps: "回",
+  sec: "秒",
 };
 
 export const INTENSITY: Record<Intensity, string> = {
@@ -116,6 +122,7 @@ export interface SampleExercise {
   bodyPart: BodyPart;
   equipment: Equipment;
   weightMode: WeightMode;
+  repUnit: RepUnit;
   defaultWeight: number;
   defaultReps: number;
   defaultSets: number;
@@ -139,8 +146,9 @@ type Row = [
   muscles: Partial<Record<Muscle, number>>,
 ];
 
-/* 種目名・部位・並び順は「筋トレ種目_フォームポイント一覧.xlsx」に準拠。
-   回数欄の単位：ダンベル保持・プランク・サイドプランクは「秒」 */
+/* 種目名・部位・並び順は「筋トレ種目_フォームポイント一覧.xlsx」に準拠 */
+const TIMED_KEYS = new Set(["dbHold", "plank", "sidePlank"]);
+
 const ROWS: Row[] = [
   // 胸
   ["dbFloorPress", "ダンベルフロアプレス", "chest", "dumbbell", "per_hand", 10, 10, 90, "moderate", "主に効く：大胸筋", { chest: 1, triceps: 0.5, shoulder: 0.3 }],
@@ -174,13 +182,13 @@ const ROWS: Row[] = [
   ["reverseCurl", "リバースカール", "forearm", "dumbbell", "per_hand", 6, 12, 60, "light", "主に効く：腕橈骨筋・前腕伸筋群（連結バーでも可）", { forearm: 1, biceps: 0.5 }],
   // 前腕・握力
   ["handgrip", "ハンドグリップ", "forearm", "handgrip", "total", 0, 20, 30, "light", "主に効く：前腕屈筋群・握力", { forearm: 1 }],
-  ["dbHold", "ダンベル保持（ファーマーズホールド）", "forearm", "dumbbell", "per_hand", 12, 30, 45, "light", "主に効く：握力・前腕（回数欄は秒数）", { forearm: 1, back: 0.2, abs: 0.2 }],
+  ["dbHold", "ダンベル保持（ファーマーズホールド）", "forearm", "dumbbell", "per_hand", 12, 30, 45, "light", "主に効く：握力・前腕", { forearm: 1, back: 0.2, abs: 0.2 }],
   // 腹
   ["abRoller", "腹筋ローラー（膝コロ）", "abs", "abroller", "total", 0, 10, 60, "high", "主に効く：腹直筋・腹横筋", { abs: 1, back: 0.3, shoulder: 0.2, triceps: 0.2 }],
   ["crunch", "クランチ", "abs", "bodyweight", "total", 0, 20, 45, "light", "主に効く：腹直筋", { abs: 1 }],
   ["legRaise", "レッグレイズ", "abs", "bodyweight", "total", 0, 15, 45, "moderate", "主に効く：腹直筋下部・腸腰筋", { abs: 1, quads: 0.2 }],
-  ["plank", "プランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹横筋・腹直筋（回数欄は秒数）", { abs: 1, shoulder: 0.2, glutes: 0.2 }],
-  ["sidePlank", "サイドプランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹斜筋（回数欄は片側の秒数）", { abs: 1, glutes: 0.2, shoulder: 0.2 }],
+  ["plank", "プランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹横筋・腹直筋", { abs: 1, shoulder: 0.2, glutes: 0.2 }],
+  ["sidePlank", "サイドプランク", "abs", "bodyweight", "total", 0, 30, 45, "moderate", "主に効く：腹斜筋（秒数は片側）", { abs: 1, glutes: 0.2, shoulder: 0.2 }],
   // 脚・尻
   ["gobletSquat", "ゴブレットスクワット", "legs", "dumbbell", "total", 12, 12, 90, "moderate", "主に効く：大腿四頭筋・大臀筋", { quads: 1, glutes: 0.7, hamstrings: 0.3, abs: 0.2 }],
   ["dbSquat", "ダンベルスクワット", "legs", "dumbbell", "per_hand", 10, 12, 90, "moderate", "主に効く：大腿四頭筋・大臀筋", { quads: 1, glutes: 0.7, hamstrings: 0.4 }],
@@ -199,6 +207,7 @@ export const SAMPLE_EXERCISES: SampleExercise[] = ROWS.map(
     bodyPart,
     equipment,
     weightMode,
+    repUnit: TIMED_KEYS.has(key) ? "sec" : "reps",
     defaultWeight,
     defaultReps,
     defaultSets: FORM_GUIDES[key]?.sets ?? 3,
@@ -208,6 +217,16 @@ export const SAMPLE_EXERCISES: SampleExercise[] = ROWS.map(
     muscles,
   }),
 );
+
+const TIMED_NAMES = new Set(
+  SAMPLE_EXERCISES.filter((s) => s.repUnit === "sec").flatMap((s) => [s.name, ...s.aliases]),
+);
+
+/** 種目の数値欄の単位。未設定の既存データは標準の秒数種目名で判定する */
+export const repUnitOf = (e: { repUnit?: RepUnit; name: string }): RepUnit =>
+  e.repUnit ?? (TIMED_NAMES.has(e.name) ? "sec" : "reps");
+
+export const isTimed = (e: { repUnit?: RepUnit; name: string }) => repUnitOf(e) === "sec";
 
 export const SAMPLE_TEMPLATES: { name: string; keys: string[] }[] = [
   { name: "胸＋三頭の日", keys: ["dbFloorPress", "dbFly", "pushup", "narrowPushup", "ohExtension"] },

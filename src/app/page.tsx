@@ -15,7 +15,7 @@ import {
 import { addDays, fmtDateLong, monthOf, weekdayOf, weekKey, WEEKDAYS, ymd } from "@/lib/date";
 import { CalendarIcon, DumbbellIcon, FoodIcon, ChevronRight } from "@/components/Icons";
 import { Card, ProgressBar, cx } from "@/components/ui";
-import { InstallHint } from "@/components/InstallHint";
+import { InstallHint, PushPrompt } from "@/components/InstallHint";
 
 export default function HomePage() {
   const data = useApp();
@@ -95,6 +95,7 @@ export default function HomePage() {
 
       <div className="space-y-3 pb-4">
         <InstallHint />
+        <PushPrompt />
         <Card
           title="今月のスタンプ"
           action={<span className="text-xs font-bold text-muted">目標 {ms.goal}回</span>}

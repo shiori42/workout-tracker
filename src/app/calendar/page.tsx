@@ -8,6 +8,7 @@ import {
   calcBmi,
   dayBurn,
   dayIntake,
+  fmtSet,
   monthStats,
   planFor,
   sessionDurationMinutes,
@@ -230,7 +231,7 @@ function DaySheet({ date, onClose }: { date: string | null; onClose: () => void 
                             <span className="ml-2 text-muted tabular-nums">
                               {e.sets
                                 .filter((x) => x.done)
-                                .map((x) => (x.weight > 0 ? `${x.weight}kg×${x.reps}` : `${x.reps}回`))
+                                .map((x) => fmtSet(e, x))
                                 .join(" / ")}
                             </span>
                             {e.memo && <div className="text-[11px] text-white/50">📝 {e.memo}</div>}
@@ -238,7 +239,9 @@ function DaySheet({ date, onClose }: { date: string | null; onClose: () => void 
                         ))}
                     </ul>
                     <div className="mt-2 text-[11px] text-muted">
-                      計 {t.sets}セット・{t.reps}回{t.volume > 0 ? `・総負荷 ${Math.round(t.volume)}kg` : ""}
+                      計 {t.sets}セット{t.reps > 0 ? `・${t.reps}回` : ""}
+                      {t.seconds > 0 ? `・${t.seconds}秒` : ""}
+                      {t.volume > 0 ? `・総負荷 ${Math.round(t.volume)}kg` : ""}
                     </div>
                     {s.note && <div className="mt-1 text-xs text-white/70">メモ：{s.note}</div>}
                   </div>

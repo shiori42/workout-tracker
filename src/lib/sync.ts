@@ -16,7 +16,7 @@ import type {
 } from "./types";
 import { useApp, defaultSettings, type AppData } from "./store";
 import { useTimer } from "./timerStore";
-import { MUSCLE_MAP } from "./constants";
+import { MUSCLE_MAP, repUnitOf } from "./constants";
 import { bodyWeightAt, computeBadges, sessionKcal } from "./calc";
 import { getSupabase, useCloud } from "./supabase";
 import { uploadPendingPhotos } from "./photos";
@@ -63,6 +63,7 @@ export function toRows(data: AppData, timerSeconds: { user: number; last: number
       body_part: e.bodyPart,
       equipment: e.equipment,
       weight_mode: e.weightMode,
+      rep_unit: repUnitOf(e),
       default_weight: e.defaultWeight,
       default_reps: e.defaultReps,
       default_sets: e.defaultSets,
@@ -114,6 +115,7 @@ export function toRows(data: AppData, timerSeconds: { user: number; last: number
         body_part: e.bodyPart,
         equipment: e.equipment,
         weight_mode: e.weightMode,
+        rep_unit: repUnitOf(e),
         intensity: e.intensity,
         rest_sec: e.restSec,
         memo: e.memo,
@@ -239,6 +241,7 @@ export function fromRows(
     bodyPart: r.body_part as Exercise["bodyPart"],
     equipment: r.equipment as Exercise["equipment"],
     weightMode: r.weight_mode as Exercise["weightMode"],
+    ...(r.rep_unit ? { repUnit: r.rep_unit === "sec" ? "sec" : "reps" } : {}),
     defaultWeight: Number(r.default_weight),
     defaultReps: Number(r.default_reps),
     defaultSets: Number(r.default_sets),
@@ -301,6 +304,7 @@ export function fromRows(
           bodyPart: e.body_part as SessionExercise["bodyPart"],
           equipment: e.equipment as SessionExercise["equipment"],
           weightMode: e.weight_mode as SessionExercise["weightMode"],
+          ...(e.rep_unit ? { repUnit: e.rep_unit === "sec" ? "sec" : "reps" } : {}),
           intensity: e.intensity as SessionExercise["intensity"],
           restSec: Number(e.rest_sec),
           memo: String(e.memo ?? ""),

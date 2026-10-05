@@ -17,7 +17,7 @@ import {
   sessionKcal,
   sessionTotals,
 } from "@/lib/calc";
-import { BODY_PARTS, EQUIPMENT, WEIGHT_MODES } from "@/lib/constants";
+import { BODY_PARTS, EQUIPMENT, REP_UNITS, WEIGHT_MODES, isTimed, repUnitOf } from "@/lib/constants";
 import { fmtClock, fmtMinutes, ymd } from "@/lib/date";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/components/hooks";
@@ -39,6 +39,7 @@ import {
   CheckIcon,
   DownIcon,
   PlusIcon,
+  TimerIcon,
   TrashIcon,
   UpIcon,
 } from "@/components/Icons";
@@ -158,7 +159,7 @@ function StartView() {
                     </span>
                     <span className="text-xs text-muted tabular-nums">
                       {e.defaultWeight > 0 ? `${e.defaultWeight}kg×` : ""}
-                      {e.defaultReps}回×{e.defaultSets}
+                      {`${e.defaultReps}${REP_UNITS[repUnitOf(e)]}`}×{e.defaultSets}
                     </span>
                   </li>
                 );
@@ -258,14 +259,21 @@ function SessionView({
     data.updateSet(session.id, ex.uid, i, { done: willDone });
     if (willDone) {
       const pr = personalRecord(data.sessions, ex.exerciseId, session.id);
+      const timed = isTimed(ex);
+      const unit = REP_UNITS[repUnitOf(ex)];
       const doneInSession = ex.sets.filter((x, j) => x.done && j !== i);
-      const sessionBest1RM = Math.max(0, ...doneInSession.map((x) => estimate1RM(x.weight, x.reps)));
+      const sessionBest1RM = timed ? 0 : Math.max(0, ...doneInSession.map((x) => estimate1RM(x.weight, x.reps)));
       const sessionBestReps = Math.max(0, ...doneInSession.map((x) => x.reps));
-      const rm = estimate1RM(set.weight, set.reps);
+      const rm = timed ? 0 : estimate1RM(set.weight, set.reps);
       if (rm > 0 && pr.best1RM > 0 && rm > pr.best1RM && rm > sessionBest1RM) {
         toast("自己ベスト更新！", `${ex.name} 推定1RM ${rm}kg（前回まで ${pr.best1RM}kg）`, "🏅");
-      } else if (set.weight === 0 && pr.bestReps > 0 && pr.bestWeight === 0 && set.reps > pr.bestReps && set.reps > sessionBestReps) {
-        toast("自己ベスト更新！", `${ex.name} ${set.reps}回（前回まで ${pr.bestReps}回）`, "🏅");
+      } else if (
+        (timed || (set.weight === 0 && pr.bestWeight === 0)) &&
+        pr.bestReps > 0 &&
+        set.reps > pr.bestReps &&
+        set.reps > sessionBestReps
+      ) {
+        toast("自己ベスト更新！", `${ex.name} ${set.reps}${unit}（前回まで ${pr.bestReps}${unit}）`, "🏅");
       }
       const isLastOfAll =
         totals.sets + 1 >= totals.plannedSets &&
@@ -424,6 +432,11 @@ function ExerciseCard({
   const first = ex.sets[0];
   const suggestion = nextTarget(data.sessions, ex, sessionId);
   const weightLabel = ex.weightMode === "per_hand" ? "kg/片手" : ex.weightMode === "left_right" ? "kg/片側" : "kg";
+  const timed = isTimed(ex);
+  const unit = REP_UNITS[repUnitOf(ex)];
+  const countLabel = timed ? "秒数" : "回数";
+  const nextSet = ex.sets.findIndex((s) => !s.done);
+  const startTimer = useTimer((s) => s.start);
 
   return (
     <section className={cx("rounded-2xl border bg-card p-4 transition", complete ? "border-ok/40" : "border-transparent")}>
@@ -447,7 +460,7 @@ function ExerciseCard({
           {first && (
             <div className="mt-1.5 text-[11px] text-muted">
               目標：{first.weight > 0 ? `${first.weight}kg × ` : ""}
-              {first.reps}回 × {ex.sets.length}セット
+              {`${first.reps}${unit}`} × {ex.sets.length}セット
             </div>
           )}
           {suggestion && doneCount === 0 && (
@@ -479,7 +492,7 @@ function ExerciseCard({
       <div className="mt-3 grid grid-cols-[28px_1fr_1fr_52px] items-center gap-2 px-0.5 text-[10px] font-bold text-muted">
         <span className="text-center">SET</span>
         <span className="text-center">重量（{weightLabel}）</span>
-        <span className="text-center">回数</span>
+        <span className="text-center">{countLabel}</span>
         <span className="text-center">完了</span>
       </div>
       <ul className="mt-1 space-y-1.5">
@@ -504,7 +517,7 @@ function ExerciseCard({
               onChange={(v) => data.updateSet(sessionId, ex.uid, i, { reps: Math.round(v) })}
               className="h-11 text-center text-lg font-bold tabular-nums"
               inputMode="numeric"
-              aria-label={`${i + 1}セット目 回数`}
+              aria-label={`${i + 1}セット目 ${countLabel}`}
             />
             <button
               onClick={() => onToggle(i)}
@@ -519,6 +532,17 @@ function ExerciseCard({
           </li>
         ))}
       </ul>
+
+      {timed && nextSet >= 0 && ex.sets[nextSet].reps > 0 && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-2 w-full"
+          onClick={() => startTimer(ex.sets[nextSet].reps, `${ex.name} ${nextSet + 1}セット目`)}
+        >
+          <TimerIcon size={14} /> {nextSet + 1}セット目の{ex.sets[nextSet].reps}秒を計る
+        </Button>
+      )}
 
       <div className="mt-3 flex items-center gap-1">
         <Button variant="secondary" size="sm" aria-label="セット追加" onClick={() => data.addSet(sessionId, ex.uid)}>
@@ -623,8 +647,11 @@ function FinishSheet({
           <div className="mt-1 text-lg font-extrabold">{totals.sets}</div>
         </div>
         <div className="rounded-xl bg-card2 p-3 text-center">
-          <div className="text-[11px] text-muted">総回数</div>
-          <div className="mt-1 text-lg font-extrabold">{totals.reps}</div>
+          <div className="text-[11px] text-muted">{totals.reps === 0 && totals.seconds > 0 ? "総秒数" : "総回数"}</div>
+          <div className="mt-1 text-lg font-extrabold">
+            {totals.reps === 0 && totals.seconds > 0 ? totals.seconds : totals.reps}
+          </div>
+          {totals.reps > 0 && totals.seconds > 0 && <div className="text-[10px] text-muted">＋{totals.seconds}秒</div>}
         </div>
       </div>
       <div className="mt-4">

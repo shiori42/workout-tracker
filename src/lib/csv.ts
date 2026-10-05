@@ -1,5 +1,5 @@
 import type { AppData } from "./store";
-import { BODY_PARTS, EQUIPMENT, INTENSITY, MEAL_TYPES } from "./constants";
+import { BODY_PARTS, EQUIPMENT, INTENSITY, MEAL_TYPES, REP_UNITS, repUnitOf } from "./constants";
 import { bodyWeightAt, calcBmi, sessionDurationMinutes, sessionKcal, sortedBody } from "./calc";
 import { fmtDateTime } from "./date";
 
@@ -16,7 +16,7 @@ function toCsv(rows: Cell[][]) {
 
 export function workoutCsv(d: AppData) {
   const rows: Cell[][] = [
-    ["日付", "開始", "種目", "部位", "器具", "強度", "セット", "重量(kg)", "回数", "完了", "ワークアウト時間(分)", "推定消費(kcal)", "メモ"],
+    ["日付", "開始", "種目", "部位", "器具", "強度", "セット", "重量(kg)", "回数/秒数", "単位", "完了", "ワークアウト時間(分)", "推定消費(kcal)", "メモ"],
   ];
   for (const s of [...d.sessions].filter((x) => x.completed).sort((a, b) => a.startAt - b.startAt)) {
     const minutes = Math.round(sessionDurationMinutes(s));
@@ -33,6 +33,7 @@ export function workoutCsv(d: AppData) {
           i + 1,
           x.weight || "",
           x.reps,
+          REP_UNITS[repUnitOf(e)],
           x.done ? "○" : "",
           ei === 0 && i === 0 ? minutes : "",
           ei === 0 && i === 0 ? kcal : "",

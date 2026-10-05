@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useTimer } from "@/lib/timerStore";
 import { useApp } from "@/lib/store";
-import { beep, showSystemNotification, vibrate } from "@/lib/notify";
+import { beep, showSystemNotification, unlockAudio, vibrate } from "@/lib/notify";
 import { toast } from "@/lib/toast";
 import { planFor } from "@/lib/calc";
 import { monthOf, pad, ymd } from "@/lib/date";
@@ -33,10 +33,14 @@ export function TimerWatcher() {
     const id = setInterval(check, 300);
     document.addEventListener("visibilitychange", check);
     window.addEventListener("focus", check);
+    window.addEventListener("pointerdown", unlockAudio, { passive: true });
+    window.addEventListener("touchend", unlockAudio, { passive: true });
     return () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", check);
       window.removeEventListener("focus", check);
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("touchend", unlockAudio);
     };
   }, []);
   return null;
