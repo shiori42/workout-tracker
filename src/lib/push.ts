@@ -168,6 +168,7 @@ export async function scheduleTimerPush(at: number, label: string) {
   if (!enabled || !endpoint) return;
   await apiFetch("/api/push/schedule", {
     method: "POST",
+    keepalive: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       endpoint,
