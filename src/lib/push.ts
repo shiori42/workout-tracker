@@ -186,6 +186,7 @@ export async function cancelTimerPush() {
   if (!enabled || !endpoint) return;
   await apiFetch("/api/push/schedule", {
     method: "DELETE",
+    keepalive: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint, tag: "interval" }),
   }).catch(() => {});

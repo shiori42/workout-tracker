@@ -1,5 +1,5 @@
 /* 筋トレ管理アプリ Service Worker */
-const CACHE = "kintore-shell-v1";
+const CACHE = "kintore-shell-v2";
 /* 開発時（?dev=1）はキャッシュせず、通知処理のみ行う */
 const DEV = new URL(self.location.href).searchParams.has("dev");
 
@@ -63,15 +63,26 @@ self.addEventListener("push", (event) => {
     data = { title: "筋トレ管理", body: event.data.text() };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "筋トレ管理", {
-      body: data.body || "",
-      tag: data.tag || undefined,
-      renotify: !!data.tag,
-      icon: "/icons/192",
-      badge: "/icons/192",
-      vibrate: [200, 100, 200],
-      data: { url: data.url || "/" },
-    }),
+    (async () => {
+      const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const focused = list.some((c) => c.focused === true);
+      const opts = {
+        body: data.body || "",
+        tag: data.tag || undefined,
+        renotify: true,
+        silent: focused,
+        icon: "/icons/192",
+        badge: "/icons/192",
+        vibrate: focused ? [] : [200, 100, 200],
+        data: { url: data.url || "/" },
+      };
+      await self.registration.showNotification(data.title || "筋トレ管理", opts);
+      // 画面を見ているときはアプリ内のビープ音に任せる。iOS は push 内で通知を出さないと既定の通知が出るので、無音で出してすぐ閉じる
+      if (focused && data.tag) {
+        const notes = await self.registration.getNotifications({ tag: data.tag });
+        for (const n of notes) n.close();
+      }
+    })(),
   );
 });
 
