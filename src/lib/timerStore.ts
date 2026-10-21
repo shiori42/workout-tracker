@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { unlockAudio } from "./notify";
+import { startKeepAlive, stopKeepAlive, unlockAudio } from "./notify";
 
 export type TimerStatus = "idle" | "running" | "paused" | "finished";
 
@@ -55,6 +55,7 @@ export const useTimer = create<TimerState>()(
       },
       start: (sec, label) => {
         unlockAudio();
+        startKeepAlive();
         const s = sec ?? get().duration;
         set({
           duration: s,
@@ -69,6 +70,7 @@ export const useTimer = create<TimerState>()(
       pause: () => {
         const st = get();
         if (st.status !== "running" || !st.endAt) return;
+        stopKeepAlive();
         set({
           status: "paused",
           remainingMs: Math.max(0, st.endAt - Date.now()),
@@ -76,12 +78,14 @@ export const useTimer = create<TimerState>()(
         });
       },
       resume: () => {
-        unlockAudio();
         const st = get();
         if (st.status !== "paused") return;
+        unlockAudio();
+        startKeepAlive();
         set({ status: "running", endAt: Date.now() + st.remainingMs });
       },
       reset: () => {
+        stopKeepAlive();
         const st = get();
         set({
           status: "idle",
@@ -92,6 +96,7 @@ export const useTimer = create<TimerState>()(
         });
       },
       skip: () => {
+        stopKeepAlive();
         const st = get();
         set({
           status: "idle",

@@ -134,6 +134,7 @@ const inputClassFor = (className?: string) => {
   let base = inputClass;
   if (className && /(^|\s)w-/.test(className)) base = base.replace("w-full ", "");
   if (className && /(^|\s)h-/.test(className)) base = base.replace("h-11 ", "");
+  if (className && /(^|\s)px-/.test(className)) base = base.replace("px-3 ", "");
   return cx(base, className);
 };
 

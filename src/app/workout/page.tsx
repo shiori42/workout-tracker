@@ -456,12 +456,12 @@ function ExerciseCard({
             <Badge color="accent">{BODY_PARTS[ex.bodyPart]}</Badge>
             <Badge>{EQUIPMENT[ex.equipment]}</Badge>
             {ex.equipment !== "bodyweight" && <Badge>{WEIGHT_MODES[ex.weightMode]}</Badge>}
-            <Badge>休憩 {ex.restSec}秒</Badge>
           </div>
           {first && (
             <div className="mt-1.5 text-[11px] text-muted">
               目標：{first.weight > 0 ? `${first.weight}kg × ` : ""}
               {`${first.reps}${unit}`} × {ex.sets.length}セット
+              {ex.restSec > 0 ? ` ・ 休憩${ex.restSec}秒` : ""}
             </div>
           )}
           {suggestion && doneCount === 0 && (
@@ -490,10 +490,11 @@ function ExerciseCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-[28px_1fr_1fr_52px] items-center gap-2 px-0.5 text-[10px] font-bold text-muted">
+      <div className="mt-3 grid grid-cols-[22px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.9fr)_48px] items-center gap-1.5 px-0.5 text-[10px] font-bold text-muted">
         <span className="text-center">SET</span>
-        <span className="text-center">重量（{weightLabel}）</span>
+        <span className="text-center">重量({weightLabel})</span>
         <span className="text-center">{countLabel}</span>
+        <span className="text-center">休憩(秒)</span>
         <span className="text-center">完了</span>
       </div>
       <ul className="mt-1 space-y-1.5">
@@ -501,7 +502,7 @@ function ExerciseCard({
           <li
             key={i}
             className={cx(
-              "grid grid-cols-[28px_1fr_1fr_52px] items-center gap-2 rounded-xl p-0.5 transition",
+              "grid grid-cols-[22px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.9fr)_48px] items-center gap-1.5 rounded-xl p-0.5 transition",
               s.done && "bg-ok/10",
             )}
           >
@@ -510,15 +511,22 @@ function ExerciseCard({
               value={s.weight}
               step={0.5}
               onChange={(v) => data.updateSet(sessionId, ex.uid, i, { weight: v })}
-              className="h-11 text-center text-lg font-bold tabular-nums"
+              className="h-11 px-1 text-center text-base font-bold tabular-nums"
               aria-label={`${i + 1}セット目 重量`}
             />
             <NumberInput
               value={s.reps}
               onChange={(v) => data.updateSet(sessionId, ex.uid, i, { reps: Math.round(v) })}
-              className="h-11 text-center text-lg font-bold tabular-nums"
+              className="h-11 px-1 text-center text-base font-bold tabular-nums"
               inputMode="numeric"
               aria-label={`${i + 1}セット目 ${countLabel}`}
+            />
+            <NumberInput
+              value={ex.restSec}
+              onChange={(v) => data.updateSessionExercise(sessionId, ex.uid, { restSec: Math.max(0, Math.min(600, Math.round(v))) })}
+              className="h-11 px-1 text-center text-base font-bold tabular-nums"
+              inputMode="numeric"
+              aria-label={`${i + 1}セット目 休憩秒数`}
             />
             <button
               onClick={() => onToggle(i)}
