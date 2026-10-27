@@ -1,77 +1,6 @@
 "use client";
 
-let audioCtx: AudioContext | null = null;
-let primed = false;
-let keepAlive: OscillatorNode | null = null;
-let keepGain: GainNode | null = null;
-let htmlAudio: HTMLAudioElement | null = null;
 let wavUrl: string | null = null;
-
-function setPlaybackSession() {
-  const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
-  if (session && session.type !== "playback") session.type = "playback";
-}
-
-/**
- * iOS Safari ではユーザー操作中に AudioContext を有効化し、実際に音（無音）を再生しておく必要がある。
- * バックグラウンド復帰などで止まった場合も次のタップで再開できるよう、タップのたびに呼んでよい。
- */
-export function unlockAudio() {
-  if (typeof window === "undefined") return;
-  try {
-    setPlaybackSession();
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    if (!audioCtx) {
-      try {
-        audioCtx = new Ctx({ latencyHint: "interactive" });
-      } catch {
-        audioCtx = new Ctx();
-      }
-    }
-    if (audioCtx.state !== "running") void audioCtx.resume().catch(() => {});
-    if (!primed) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = audioCtx.createBuffer(1, 1, 22050);
-      src.connect(audioCtx.destination);
-      src.start(0);
-      primed = true;
-    }
-    primeHtmlAudio();
-  } catch {
-    /* noop */
-  }
-}
-
-/** タイマー稼働中は無音を流し続け、iOS が AudioContext を suspend しないようにする */
-export function startKeepAlive() {
-  unlockAudio();
-  if (!audioCtx) return;
-  stopKeepAlive();
-  try {
-    keepGain = audioCtx.createGain();
-    keepGain.gain.value = 0.00007;
-    keepAlive = audioCtx.createOscillator();
-    keepAlive.frequency.value = 20;
-    keepAlive.connect(keepGain).connect(audioCtx.destination);
-    keepAlive.start();
-  } catch {
-    keepAlive = null;
-    keepGain = null;
-  }
-}
-
-export function stopKeepAlive() {
-  try {
-    keepAlive?.stop();
-  } catch {
-    /* already stopped */
-  }
-  keepAlive = null;
-  keepGain = null;
-}
 
 function playBeeps(ctx: AudioContext, times: number) {
   for (let i = 0; i < times; i++) {
@@ -138,54 +67,29 @@ function makeBeepWav(): string {
   return `data:audio/wav;base64,${btoa(bin)}`;
 }
 
-function primeHtmlAudio() {
+/** タイマー終了時だけ鳴らす。常時再生やタップ時の準備音は YouTube などの再生を止めてしまう */
+export function beep(times = 4) {
   if (typeof window === "undefined") return;
   try {
     if (!wavUrl) wavUrl = makeBeepWav();
-    if (!htmlAudio) {
-      htmlAudio = new Audio(wavUrl);
-      htmlAudio.preload = "auto";
-      htmlAudio.setAttribute("playsinline", "true");
-      htmlAudio.setAttribute("webkit-playsinline", "true");
-    }
-    htmlAudio.pause();
-    htmlAudio.currentTime = 0;
-    const play = htmlAudio.play();
-    if (play) {
-      void play
-        .then(() => {
-          htmlAudio?.pause();
-          if (htmlAudio) htmlAudio.currentTime = 0;
-        })
-        .catch(() => {});
-    }
+    const audio = new Audio(wavUrl);
+    audio.setAttribute("playsinline", "true");
+    void audio.play().catch(() => {});
   } catch {
     /* noop */
   }
-}
-
-function playHtmlBeep() {
-  if (!htmlAudio) primeHtmlAudio();
-  if (!htmlAudio) return;
   try {
-    htmlAudio.pause();
-    htmlAudio.currentTime = 0;
-    void htmlAudio.play().catch(() => {});
-  } catch {
-    /* noop */
-  }
-}
-
-export function beep(times = 4) {
-  try {
-    unlockAudio();
-    const ctx = audioCtx;
-    if (ctx) {
-      if (ctx.state === "running") playBeeps(ctx, times);
-      else void ctx.resume().then(() => playBeeps(ctx, times)).catch(() => {});
-    }
-    playHtmlBeep();
-    setTimeout(stopKeepAlive, 2200);
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const run = () => {
+      playBeeps(ctx, times);
+      setTimeout(() => void ctx.close().catch(() => {}), 2200);
+    };
+    if (ctx.state === "running") run();
+    else void ctx.resume().then(run).catch(() => {});
   } catch {
     /* noop */
   }
